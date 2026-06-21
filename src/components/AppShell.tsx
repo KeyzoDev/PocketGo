@@ -9,11 +9,14 @@ import {
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { TransactionSheet } from './TransactionSheet'
+import type { EntryMode } from './TransactionSheet'
+import { TransactionTypeChooser } from './TransactionTypeChooser'
 import { useAppStore } from '../store/useAppStore'
 import { useLocalization } from '../i18n'
 
 export function AppShell() {
-  const [adding, setAdding] = useState(false)
+  const [choosing, setChoosing] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode | null>(null)
   const location = useLocation()
   const isOnboarding = location.pathname === '/onboarding'
   const { syncing, syncError, isCloudMode } = useAppStore()
@@ -42,7 +45,7 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-        <button className="sidebar-add" type="button" onClick={() => setAdding(true)}>
+        <button className="sidebar-add" type="button" onClick={() => setChoosing(true)}>
           <Plus size={20} /> {t('home.addTransaction')}
         </button>
       </aside>
@@ -58,7 +61,23 @@ export function AppShell() {
           </NavLink>
         ))}
       </nav>
-      <TransactionSheet open={adding} onClose={() => setAdding(false)} />
+      <button className="global-fab" type="button" aria-label={t('home.addTransaction')} onClick={() => setChoosing(true)}>
+        <Plus size={25} />
+      </button>
+      <TransactionTypeChooser
+        open={choosing}
+        onClose={() => setChoosing(false)}
+        onSelect={(mode) => {
+          setChoosing(false)
+          setEntryMode(mode)
+        }}
+      />
+      <TransactionSheet
+        key={entryMode ?? 'closed'}
+        open={Boolean(entryMode)}
+        initialMode={entryMode ?? undefined}
+        onClose={() => setEntryMode(null)}
+      />
     </div>
   )
 }

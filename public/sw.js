@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocketgo-v1'
+const CACHE_NAME = 'pocketgo-v2'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/pocketgo-icon.png']
 
 self.addEventListener('install', (event) => {

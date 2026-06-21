@@ -3,13 +3,12 @@ import { ArrowDown, ArrowLeftRight, ArrowUp, SlidersHorizontal } from 'lucide-re
 import { formatISO } from 'date-fns'
 import { Modal } from './Modal'
 import { useAppStore } from '../store/useAppStore'
-import { parseAmount } from '../lib/format'
-import { currencySymbol } from '../lib/format'
+import { currencySymbol, formatNumber, parseAmount } from '../lib/format'
 import { useLocalization } from '../i18n'
 import { localizedCategoryName } from '../i18n/regions'
 import type { Transaction, TransactionType } from '../types'
 
-type EntryMode = 'expense' | 'income' | 'transfer' | 'adjustment'
+export type EntryMode = 'expense' | 'income' | 'transfer' | 'adjustment'
 
 function modeFromTransaction(transaction?: Transaction): EntryMode {
   if (!transaction) return 'expense'
@@ -60,12 +59,16 @@ export function TransactionSheet({
 
   const activeWallets = state.wallets.filter((wallet) => !wallet.isArchived)
   const categories = useMemo(
-    () =>
-      state.categories.filter(
+    () => {
+      const seen = new Set<string>()
+      return state.categories.filter(
         (category) =>
           !category.isArchived &&
-          category.type === (mode === 'income' ? 'income' : 'expense'),
-      ),
+          category.type === (mode === 'income' ? 'income' : 'expense') &&
+          !seen.has(`${category.type}:${category.localizationKey ?? category.name.trim().toLowerCase()}`) &&
+          Boolean(seen.add(`${category.type}:${category.localizationKey ?? category.name.trim().toLowerCase()}`)),
+      )
+    },
     [mode, state.categories],
   )
 
@@ -118,18 +121,17 @@ export function TransactionSheet({
         </div>
       ) : (
         <form className="form-stack" onSubmit={submit}>
-          {!transaction ? <div className="transaction-intro"><strong>{t('entry.addTitle')}</strong><small>{t('entry.choose')}</small></div> : null}
           <div className="segmented-control" aria-label={t('transactions.filterType')}>
             {([
-              ['expense', ArrowUp, t('transactions.expense')],
-              ['income', ArrowDown, t('transactions.income')],
+              ['expense', ArrowDown, t('transactions.expense')],
+              ['income', ArrowUp, t('transactions.income')],
               ['transfer', ArrowLeftRight, t('transactions.transfer')],
               ['adjustment', SlidersHorizontal, t('entry.adjustment')],
             ] as const).map(([value, Icon, label]) => (
               <button
                 key={value}
                 type="button"
-                className={mode === value ? 'active' : ''}
+                className={`${value} ${mode === value ? 'active' : ''}`}
                 disabled={Boolean(transaction)}
                 onClick={() => {
                   setMode(value)
@@ -144,7 +146,7 @@ export function TransactionSheet({
 
           <label className="amount-field">
             <span>{t('entry.amount')}</span>
-            <div><small>{currencySymbol(currency, locale)}</small><input autoFocus inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" /></div>
+            <div><small>{currencySymbol(currency, locale)}</small><input autoFocus inputMode="numeric" value={amount ? formatNumber(parseAmount(amount, locale), locale, { maximumFractionDigits: 0 }) : ''} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} placeholder="0" /></div>
           </label>
 
           {mode === 'transfer' ? (

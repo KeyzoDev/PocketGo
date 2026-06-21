@@ -37,7 +37,7 @@ export const idID = {
   'auth.signupTitle': 'Buat akun PocketGo',
   'auth.forgotTitle': 'Pulihkan akses',
   'auth.lead': 'Lanjutkan mengatur uang, budget, tagihan, dan rencana keuanganmu dalam satu tempat.',
-  'auth.security': 'Data akunmu hanya dapat diakses oleh akun yang kamu gunakan untuk masuk.',
+  'auth.security': 'Datamu hanya bisa diakses dari akun PocketGo milikmu.',
   'auth.login': 'Masuk',
   'auth.signup': 'Daftar',
   'auth.forgot': 'Lupa sandi',

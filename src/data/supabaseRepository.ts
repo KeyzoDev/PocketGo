@@ -157,29 +157,21 @@ async function ensureProfile(user: User) {
   return created
 }
 
-async function ensureCategories(countryCode: Profile['countryCode']) {
-  const db = client()
-  const { data, error } = await db.from('categories').select('id').limit(1)
-  if (error) throw error
-  if (data.length) return
-  const { error: insertError } = await db.from('categories').insert(
-    createDefaultCategories(countryCode).map((category, index) => ({
-      localization_key: category.localizationKey,
-      name: category.name,
-      type: category.type,
-      is_default: true,
-      is_archived: false,
-      sort_order: index,
-    })),
-  )
-  if (insertError) throw insertError
+function dedupeCategories(categories: Category[]) {
+  const seen = new Set<string>()
+  return categories.filter((category) => {
+    const key = `${category.type}:${category.localizationKey ?? category.name.trim().toLowerCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export async function loadCloudState(user: User): Promise<AppState> {
   const db = client()
   const profileRow = await ensureProfile(user)
   const profile = profileFromRow(profileRow)
-  await ensureCategories(profile.countryCode)
+  await syncCloudDefaultCategories(profile.countryCode)
   const [
     wallets,
     categories,
@@ -204,7 +196,7 @@ export async function loadCloudState(user: User): Promise<AppState> {
   return {
     profile,
     wallets: (wallets.data ?? []).map(walletFromRow),
-    categories: (categories.data ?? []).map(categoryFromRow),
+    categories: dedupeCategories((categories.data ?? []).map(categoryFromRow)),
     transactions: (transactions.data ?? []).map(transactionFromRow),
     recurringRules: (recurringRules.data ?? []).map(recurringFromRow),
     budgets: (budgets.data ?? []).map(budgetFromRow),
@@ -259,7 +251,10 @@ export async function syncCloudDefaultCategories(countryCode: Profile['countryCo
     if (updateError) throw updateError
   }
   if (inserts.length) {
-    const { error: insertError } = await db.from('categories').insert(inserts)
+    const { error: insertError } = await db.from('categories').upsert(inserts, {
+      onConflict: 'user_id,localization_key,type',
+      ignoreDuplicates: true,
+    })
     if (insertError) throw insertError
   }
 }

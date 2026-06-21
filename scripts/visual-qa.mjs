@@ -38,6 +38,15 @@ async function clickButton(name) {
   await page.getByRole('button', { name, exact: true }).click()
 }
 
+const manifestResponse = await page.request.get(`${baseURL}/manifest.webmanifest`)
+if (!manifestResponse.ok()) throw new Error(`Manifest PWA gagal dimuat: ${manifestResponse.status()}`)
+const manifest = await manifestResponse.json()
+if (manifest.display !== 'standalone' || !manifest.icons?.length) {
+  throw new Error(`Manifest PWA tidak siap dipasang: ${JSON.stringify(manifest)}`)
+}
+const serviceWorkerResponse = await page.request.get(`${baseURL}/sw.js`)
+if (!serviceWorkerResponse.ok()) throw new Error(`Service worker gagal dimuat: ${serviceWorkerResponse.status()}`)
+
 await page.goto(baseURL, { waitUntil: 'networkidle' })
 await page.goto(`${baseURL}/privacy`, { waitUntil: 'networkidle' })
 await page.getByRole('heading', { name: 'Kebijakan Privasi' }).waitFor()
@@ -49,6 +58,7 @@ if (await page.getByRole('heading', { name: 'Masuk ke PocketGo' }).isVisible().c
   await page.getByRole('heading', { name: 'Sign in to PocketGo' }).waitFor()
   await page.locator('.auth-language select').selectOption('id-ID')
   await page.getByRole('heading', { name: 'Masuk ke PocketGo' }).waitFor()
+  await screenshot('00-auth-compact-language', false)
   if (!process.env.TEST_EMAIL || !process.env.TEST_PASSWORD) {
     throw new Error('TEST_EMAIL dan TEST_PASSWORD diperlukan untuk QA pada mode Supabase.')
   }
@@ -84,7 +94,7 @@ await page.getByRole('heading', { name: 'Hai, Andi' }).waitFor()
 
 await page.getByRole('link', { name: 'Lainnya' }).click()
 await page.getByRole('heading', { name: 'Lainnya' }).waitFor()
-await page.locator('.settings-section').first().getByRole('button', { name: 'Tambah' }).click()
+await page.locator('.settings-section').first().getByRole('button', { name: 'Tambah', exact: true }).click()
 await page.getByLabel('Nama dompet').fill('E-wallet')
 await page.locator('.modal-sheet select').nth(0).selectOption('ewallet')
 await page.getByLabel('Saldo awal').fill('500000')
@@ -93,14 +103,22 @@ await clickButton('Simpan dompet')
 await page.getByRole('link', { name: 'Transaksi' }).click()
 await page.getByRole('heading', { name: 'Transaksi', exact: true }).waitFor()
 await page.getByRole('button', { name: 'Tambah', exact: true }).click()
+await screenshot('06-transaction-chooser', false)
+await page.getByRole('button', { name: /Pengeluaran.*Untuk uang yang keluar/ }).click()
 await page.locator('.amount-field input').fill('100000')
+if (await page.locator('.amount-field input').inputValue() !== '100.000') {
+  throw new Error(`Format nominal IDR tidak benar: ${await page.locator('.amount-field input').inputValue()}`)
+}
 await page.locator('.modal-sheet select').nth(0).selectOption({ label: 'Rekening Utama' })
+if (await page.getByRole('button', { name: 'Makan & Minum', exact: true }).count() !== 1) {
+  throw new Error('Kategori default Makan & Minum tampil lebih dari sekali.')
+}
 await page.getByRole('button', { name: 'Makan & Minum' }).click()
 await page.getByLabel(/Merchant/).fill('Warung Makan')
 await clickButton('Simpan transaksi')
 
 await page.getByRole('button', { name: 'Tambah', exact: true }).click()
-await page.getByRole('button', { name: 'Pemasukan', exact: true }).click()
+await page.getByRole('button', { name: /Pemasukan.*Untuk uang yang masuk/ }).click()
 await page.locator('.amount-field input').fill('1000000')
 await page.locator('.modal-sheet select').nth(0).selectOption({ label: 'Rekening Utama' })
 await page.getByRole('button', { name: 'Gaji' }).click()
@@ -108,7 +126,7 @@ await page.getByLabel(/Merchant/).fill('Perusahaan')
 await clickButton('Simpan transaksi')
 
 await page.getByRole('button', { name: 'Tambah', exact: true }).click()
-await page.getByRole('button', { name: 'Transfer', exact: true }).click()
+await page.getByRole('button', { name: /Transfer.*Pindah uang antar wallet/ }).click()
 await page.locator('.amount-field input').fill('200000')
 await page.locator('.modal-sheet select').nth(0).selectOption({ label: 'Rekening Utama' })
 await page.locator('.modal-sheet select').nth(1).selectOption({ label: 'E-wallet' })
@@ -158,6 +176,9 @@ await screenshot('02-plan-viewport', false)
 
 await page.getByRole('link', { name: 'Home' }).click()
 await page.getByRole('heading', { name: 'Hai, Andi' }).waitFor()
+if (await page.getByRole('heading', { name: 'Tambah transaksi' }).count()) {
+  throw new Error('Section Tambah transaksi lama masih tampil di Home.')
+}
 const totalText = await page.locator('.money-summary').first().innerText()
 if (!totalText.includes('3.850.000')) {
   throw new Error(`Saldo total tidak sesuai setelah transfer: ${totalText}`)
@@ -181,6 +202,7 @@ if ((storedState.transactions && storedTransfers.length !== 2) || transferRows !
 }
 
 await page.getByRole('button', { name: 'Tambah', exact: true }).click()
+await page.getByRole('button', { name: /Pengeluaran.*Untuk uang yang keluar/ }).click()
 const sheetMetrics = await page.locator('.modal-content').evaluate((element) => ({
   clientHeight: element.clientHeight,
   scrollHeight: element.scrollHeight,
@@ -189,7 +211,7 @@ const sheetMetrics = await page.locator('.modal-content').evaluate((element) => 
 if (sheetMetrics.scrollHeight > sheetMetrics.clientHeight && sheetMetrics.overflowY !== 'auto') {
   throw new Error(`Sheet tidak scrollable: ${JSON.stringify(sheetMetrics)}`)
 }
-await screenshot('06-transaction-sheet', false)
+await screenshot('07-transaction-sheet', false)
 await page.getByRole('button', { name: 'Tutup' }).click()
 
 await page.getByRole('link', { name: 'Insight' }).click()
@@ -285,4 +307,5 @@ console.log(JSON.stringify({
   consoleErrors,
   pageErrors,
   networkErrors,
+  pwa: { display: manifest.display, iconCount: manifest.icons.length, serviceWorker: serviceWorkerResponse.status() },
 }, null, 2))

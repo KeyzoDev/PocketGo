@@ -94,6 +94,21 @@ try {
   })
   assert(Boolean(spoofError), 'Akun B dapat membuat row menggunakan user_id akun A.')
 
+  const { error: categoryError } = await userA.from('categories').insert({
+    name: 'RLS Food',
+    localization_key: 'rls_food',
+    type: 'expense',
+    is_default: true,
+  })
+  if (categoryError) throw categoryError
+  const { error: duplicateCategoryError } = await userA.from('categories').insert({
+    name: 'RLS Food Duplicate',
+    localization_key: 'rls_food',
+    type: 'expense',
+    is_default: true,
+  })
+  assert(Boolean(duplicateCategoryError), 'Kategori default duplikat dapat dibuat untuk user yang sama.')
+
   const today = new Date().toISOString().slice(0, 10)
   const { data: budget, error: budgetError } = await userA
     .from('budgets')
@@ -195,6 +210,7 @@ try {
       'akun B tidak dapat membaca wallet akun A',
       'akun B tidak dapat mengubah wallet akun A',
       'user_id tidak dapat dipalsukan',
+      'kategori default duplikat diblokir per akun',
       'akun A dapat create/update/delete budget sendiri',
       'budget akun A tidak terlihat oleh akun B',
       'feedback akun A tidak terlihat oleh akun B',

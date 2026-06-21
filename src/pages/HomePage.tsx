@@ -11,21 +11,19 @@ import {
   WalletCards,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { calculateForecast, calculateSafeToSpend, debtSummary, detectSmallSpendingLeak } from '../domain/calculations'
 import { totalBalance } from '../domain/ledger'
 import { formatCurrency, formatDate } from '../lib/format'
 import { useLocalization } from '../i18n'
 import { useAppStore } from '../store/useAppStore'
 import { EmptyState } from '../components/EmptyState'
-import { TransactionSheet } from '../components/TransactionSheet'
 
 export function HomePage() {
   const { state } = useAppStore()
   const { t, locale, currency } = useLocalization()
   const money = (value: number) => formatCurrency(value, currency, locale)
   const navigate = useNavigate()
-  const [adding, setAdding] = useState(false)
   const safe = useMemo(() => calculateSafeToSpend(state), [state])
   const forecast = useMemo(() => calculateForecast(state, 7), [state])
   const debt = useMemo(() => debtSummary(state), [state])
@@ -103,7 +101,7 @@ export function HomePage() {
             title={t('home.startTitle')}
             body={t('home.startBody')}
             action={t('home.startAction')}
-            onAction={() => setAdding(true)}
+            onAction={() => navigate('/transactions')}
           />
         ) : (
           <>
@@ -155,7 +153,7 @@ export function HomePage() {
 
             <section className="brief-section">
               <h2>{t('home.advice')}</h2>
-              <button className="advisor-row" type="button" onClick={() => leak ? navigate('/insight') : setAdding(true)}>
+              <button className="advisor-row" type="button" onClick={() => leak ? navigate('/insight') : navigate('/transactions')}>
                 <span className="brief-icon green"><Lightbulb size={20} /></span>
                 <span>
                   <strong>{leak ? t('home.smallPurchases') : t('home.recordDaily')}</strong>
@@ -165,20 +163,10 @@ export function HomePage() {
               </button>
             </section>
 
-            <section className="quick-add-section">
-              <h2>{t('home.addTransaction')}</h2>
-              <button className="quick-add-card" type="button" onClick={() => setAdding(true)}>
-                <span><WalletCards size={21} /></span>
-                <div><strong>{t('home.moneyMovement')}</strong><small>{t('home.moneyMovementBody')}</small></div>
-                <ArrowRight size={18} />
-              </button>
-            </section>
-
             <div className="privacy-note"><ShieldCheck size={16} /> {t('home.privacy')}</div>
           </>
         )}
       </section>
-      <TransactionSheet open={adding} onClose={() => setAdding(false)} />
     </div>
   )
 }
