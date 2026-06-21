@@ -1,7 +1,8 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { useAppStore } from './store/useAppStore'
+import { useLocalization } from './i18n'
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage').then((module) => ({ default: module.TransactionsPage })))
@@ -17,29 +18,46 @@ const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then((module) => 
 
 export function App() {
   const { state, session, authLoading, dataLoading, isCloudMode, passwordRecovery, syncError, reload } = useAppStore()
+  const { t, setPreferences, language, countryCode, currency } = useLocalization()
   const location = useLocation()
   const isPublicLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
+  useEffect(() => {
+    if (!session) return
+    if (
+      language !== state.profile.preferredLanguage
+      || countryCode !== state.profile.countryCode
+      || currency !== state.profile.currency
+    ) {
+      setPreferences({
+        language: state.profile.preferredLanguage,
+        locale: state.profile.locale,
+        countryCode: state.profile.countryCode,
+        currency: state.profile.currency,
+      })
+    }
+  }, [countryCode, currency, language, session, setPreferences, state.profile])
+
   if (isPublicLegalPage) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
+      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
         {location.pathname === '/privacy' ? <PrivacyPage /> : <TermsPage />}
       </Suspense>
     )
   }
   if (authLoading || (isCloudMode && session && dataLoading)) {
-    return <div className="page-loading" role="status">Menyiapkan data PocketGo...</div>
+    return <div className="page-loading" role="status">{t('common.loading')}</div>
   }
   if (passwordRecovery) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
+      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
         <PasswordRecoveryPage />
       </Suspense>
     )
   }
   if (isCloudMode && !session) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
+      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
         <AuthPage />
       </Suspense>
     )
@@ -47,9 +65,9 @@ export function App() {
   if (syncError && isCloudMode && session && state.wallets.length === 0) {
     return (
       <main className="fatal-state">
-        <h1>Data belum dapat dimuat</h1>
+        <h1>{t('error.loadTitle')}</h1>
         <p>{syncError}</p>
-        <button className="primary-button" type="button" onClick={() => reload()}>Coba lagi</button>
+        <button className="primary-button" type="button" onClick={() => reload()}>{t('common.retry')}</button>
       </main>
     )
   }
@@ -61,7 +79,7 @@ export function App() {
   }
 
   return (
-    <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
+    <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
       <Routes>
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route element={<AppShell />}>

@@ -18,9 +18,14 @@ export type TransactionType =
   | 'adjustment'
 
 export type CategoryType = 'income' | 'expense' | 'system'
+export type SupportedLocale = 'id-ID' | 'en-US'
+export type CountryCode = 'ID' | 'US' | 'GLOBAL'
 
 export interface Profile {
   fullName: string
+  preferredLanguage: SupportedLocale
+  locale: SupportedLocale
+  countryCode: CountryCode
   currency: string
   incomePattern: 'monthly' | 'twice_monthly' | 'weekly' | 'daily' | 'irregular' | 'none'
   defaultIncomeDay?: number
@@ -41,6 +46,7 @@ export interface Wallet {
 
 export interface Category {
   id: string
+  localizationKey?: string
   name: string
   type: CategoryType
   isDefault: boolean

@@ -5,17 +5,20 @@ import { App } from './App'
 import { AppStoreProvider } from './store/AppStore'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { reportClientError } from './lib/monitoring'
+import { LocalizationProvider } from './i18n'
 import './styles.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AppStoreProvider>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      </AppStoreProvider>
-    </BrowserRouter>
+    <LocalizationProvider>
+      <BrowserRouter>
+        <AppStoreProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </AppStoreProvider>
+      </BrowserRouter>
+    </LocalizationProvider>
   </StrictMode>,
 )
 

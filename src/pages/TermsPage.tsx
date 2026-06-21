@@ -1,36 +1,50 @@
 import { ArrowLeft, Scale } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useLocalization } from '../i18n'
+
+const copy = {
+  'id-ID': {
+    back: 'Kembali ke PocketGo',
+    effective: 'Berlaku 21 Juni 2026',
+    title: 'Ketentuan Penggunaan',
+    lead: 'Ketentuan ini mengatur penggunaan PocketGo sebagai alat bantu pencatatan dan perencanaan finansial pribadi.',
+    sections: [
+      ['Bukan nasihat finansial', 'Safe to Spend, forecast, health score, dan insight adalah perkiraan berdasarkan data yang pengguna masukkan dan bukan nasihat investasi, kredit, pajak, hukum, atau finansial profesional.'],
+      ['Tanggung jawab pengguna', 'Pengguna bertanggung jawab menjaga keamanan akun, memastikan data benar, meninjau asumsi perhitungan, dan memverifikasi kewajiban dengan penyedia layanan terkait.'],
+      ['Penggunaan yang diperbolehkan', 'PocketGo digunakan untuk kebutuhan finansial pribadi atau usaha kecil yang sah. Pengguna tidak boleh mengakses akun lain, mengganggu layanan, mengeksploitasi celah, atau melakukan aktivitas melanggar hukum.'],
+      ['Ketersediaan', 'Kami berupaya menjaga layanan dan perhitungan tetap benar, tetapi tidak menjamin layanan bebas gangguan. Fitur dapat diubah untuk keamanan dan kualitas produk.'],
+      ['Data dan penghentian akun', 'Pengguna tetap memiliki kendali atas data yang dimasukkan dan disarankan mengekspor data sebelum berhenti menggunakan PocketGo.'],
+      ['Batas tanggung jawab', 'Sejauh diizinkan hukum, PocketGo tidak bertanggung jawab atas kerugian dari data tidak lengkap, keputusan pengguna, keterlambatan input, atau gangguan pihak ketiga.'],
+    ],
+  },
+  'en-US': {
+    back: 'Back to PocketGo',
+    effective: 'Effective June 21, 2026',
+    title: 'Terms of Service',
+    lead: 'These terms govern the use of PocketGo as a personal finance tracking and planning tool.',
+    sections: [
+      ['Not financial advice', 'Safe to Spend, forecasts, health scores, and insights are estimates based on user-entered data and are not investment, credit, tax, legal, or professional financial advice.'],
+      ['User responsibility', 'Users are responsible for account security, accurate records, reviewing calculation assumptions, and verifying commitments with the relevant financial provider.'],
+      ['Acceptable use', 'PocketGo may be used for lawful personal finance or small-business needs. Users may not access other accounts, disrupt the service, exploit vulnerabilities, or use it for unlawful activity.'],
+      ['Availability', 'We work to keep the service available and calculations accurate, but do not guarantee uninterrupted operation. Features may change for security and product quality.'],
+      ['Data and account closure', 'Users retain control over entered data and should export it before they stop using PocketGo.'],
+      ['Limitation of liability', 'To the extent permitted by law, PocketGo is not responsible for losses caused by incomplete data, user decisions, delayed input, or third-party service disruption.'],
+    ],
+  },
+}
 
 export function TermsPage() {
+  const { language } = useLocalization()
+  const content = copy[language]
   return (
     <main className="legal-page">
       <article>
-        <Link className="legal-back" to="/"><ArrowLeft size={17} /> Kembali ke PocketGo</Link>
+        <Link className="legal-back" to="/"><ArrowLeft size={17} /> {content.back}</Link>
         <span className="legal-icon"><Scale size={25} /></span>
-        <p className="eyebrow">Berlaku 21 Juni 2026</p>
-        <h1>Ketentuan Penggunaan</h1>
-        <p className="legal-lead">Ketentuan ini mengatur penggunaan PocketGo sebagai alat bantu pencatatan dan perencanaan finansial pribadi.</p>
-
-        <h2>Bukan nasihat finansial</h2>
-        <p>Safe to Spend, forecast, health score, dan insight adalah perkiraan berdasarkan data yang pengguna masukkan. Fitur tersebut bukan rekomendasi investasi, kredit, pajak, hukum, atau keputusan finansial profesional.</p>
-
-        <h2>Tanggung jawab pengguna</h2>
-        <p>Pengguna bertanggung jawab menjaga keamanan akun, memastikan data yang dicatat benar, meninjau asumsi perhitungan, dan memverifikasi kewajiban dengan penyedia layanan keuangan terkait.</p>
-
-        <h2>Penggunaan yang diperbolehkan</h2>
-        <p>PocketGo digunakan untuk kebutuhan finansial pribadi atau usaha kecil yang sah. Pengguna tidak boleh mencoba mengakses akun lain, mengganggu layanan, mengeksploitasi celah keamanan, atau memakai layanan untuk aktivitas melanggar hukum.</p>
-
-        <h2>Ketersediaan dan perubahan</h2>
-        <p>Kami berupaya menjaga layanan tetap tersedia dan perhitungan tetap benar, namun tidak menjamin layanan bebas gangguan. Fitur dapat diperbaiki, diubah, atau dihentikan untuk keamanan dan kualitas produk.</p>
-
-        <h2>Data dan penghentian akun</h2>
-        <p>Pengguna tetap memiliki kendali atas data yang dimasukkan. Sebelum berhenti menggunakan PocketGo, pengguna disarankan mengekspor data. Penghapusan akun dapat menghapus data secara permanen setelah verifikasi.</p>
-
-        <h2>Batas tanggung jawab</h2>
-        <p>Sejauh diizinkan hukum, PocketGo tidak bertanggung jawab atas kerugian yang muncul dari data tidak lengkap, keputusan pengguna, keterlambatan input, atau gangguan layanan pihak ketiga.</p>
-
-        <h2>Kontak dan perubahan ketentuan</h2>
-        <p>Masukan dapat disampaikan melalui <a href="https://github.com/KeyzoDev/PocketGo/issues" target="_blank" rel="noreferrer">repository PocketGo</a>. Perubahan material pada ketentuan akan diberi tanggal berlaku baru.</p>
+        <p className="eyebrow">{content.effective}</p>
+        <h1>{content.title}</h1>
+        <p className="legal-lead">{content.lead}</p>
+        {content.sections.map(([title, body]) => <section key={title}><h2>{title}</h2><p>{body}</p></section>)}
       </article>
     </main>
   )

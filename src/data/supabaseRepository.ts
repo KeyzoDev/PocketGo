@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
-import { defaultCategories, emptyState } from './defaults'
+import { emptyState } from './defaults'
+import { createDefaultCategories } from '../i18n/regions'
 import { supabase } from '../lib/supabase'
 import type {
   AppState,
@@ -30,6 +31,9 @@ function profileFromRow(row?: Row | null): Profile {
   if (!row) return emptyState.profile
   return {
     fullName: row.full_name ?? '',
+    preferredLanguage: row.preferred_language ?? 'id-ID',
+    locale: row.locale ?? 'id-ID',
+    countryCode: row.country_code ?? 'ID',
     currency: row.currency ?? 'IDR',
     incomePattern: row.income_pattern ?? 'monthly',
     defaultIncomeDay: row.default_income_day ?? undefined,
@@ -54,6 +58,7 @@ function walletFromRow(row: Row): Wallet {
 function categoryFromRow(row: Row): Category {
   return {
     id: row.id,
+    localizationKey: row.localization_key ?? undefined,
     name: row.name,
     type: row.type === 'system' || row.type === 'transfer' ? 'system' : row.type,
     isDefault: row.is_default,
@@ -139,7 +144,10 @@ async function ensureProfile(user: User) {
     .upsert({
       id: user.id,
       full_name: user.user_metadata.full_name ?? '',
-      currency: 'IDR',
+      preferred_language: user.user_metadata.preferred_language ?? 'id-ID',
+      locale: user.user_metadata.locale ?? 'id-ID',
+      country_code: user.user_metadata.country_code ?? 'ID',
+      currency: user.user_metadata.currency ?? 'IDR',
       income_pattern: 'monthly',
       onboarding_completed: false,
     })
@@ -149,13 +157,14 @@ async function ensureProfile(user: User) {
   return created
 }
 
-async function ensureCategories() {
+async function ensureCategories(countryCode: Profile['countryCode']) {
   const db = client()
   const { data, error } = await db.from('categories').select('id').limit(1)
   if (error) throw error
   if (data.length) return
   const { error: insertError } = await db.from('categories').insert(
-    defaultCategories.map((category, index) => ({
+    createDefaultCategories(countryCode).map((category, index) => ({
+      localization_key: category.localizationKey,
       name: category.name,
       type: category.type,
       is_default: true,
@@ -169,7 +178,8 @@ async function ensureCategories() {
 export async function loadCloudState(user: User): Promise<AppState> {
   const db = client()
   const profileRow = await ensureProfile(user)
-  await ensureCategories()
+  const profile = profileFromRow(profileRow)
+  await ensureCategories(profile.countryCode)
   const [
     wallets,
     categories,
@@ -192,7 +202,7 @@ export async function loadCloudState(user: User): Promise<AppState> {
   )
   if (failed?.error) throw failed.error
   return {
-    profile: profileFromRow(profileRow),
+    profile,
     wallets: (wallets.data ?? []).map(walletFromRow),
     categories: (categories.data ?? []).map(categoryFromRow),
     transactions: (transactions.data ?? []).map(transactionFromRow),
@@ -207,12 +217,51 @@ export async function saveCloudProfile(userId: string, profile: Profile) {
   const { error } = await client().from('profiles').upsert({
     id: userId,
     full_name: profile.fullName,
+    preferred_language: profile.preferredLanguage,
+    locale: profile.locale,
+    country_code: profile.countryCode,
     currency: profile.currency,
     income_pattern: profile.incomePattern,
     default_income_day: profile.defaultIncomeDay ?? null,
     onboarding_completed: profile.onboardingCompleted,
   })
   if (error) throw error
+}
+
+export async function syncCloudDefaultCategories(countryCode: Profile['countryCode']) {
+  const db = client()
+  const defaults = createDefaultCategories(countryCode)
+  const { data, error } = await db.from('categories').select('id, localization_key').eq('is_default', true)
+  if (error) throw error
+  const existing = new Map((data ?? []).map((row) => [row.localization_key, row.id]))
+  const updates = defaults.flatMap((category, index) => {
+    const id = existing.get(category.localizationKey)
+    return id ? [{
+      id,
+      name: category.name,
+      localization_key: category.localizationKey,
+      type: category.type,
+      is_default: true,
+      is_archived: false,
+      sort_order: index,
+    }] : []
+  })
+  const inserts = defaults.flatMap((category, index) => existing.has(category.localizationKey) ? [] : [{
+    name: category.name,
+    localization_key: category.localizationKey,
+    type: category.type,
+    is_default: true,
+    is_archived: false,
+    sort_order: index,
+  }])
+  if (updates.length) {
+    const { error: updateError } = await db.from('categories').upsert(updates)
+    if (updateError) throw updateError
+  }
+  if (inserts.length) {
+    const { error: insertError } = await db.from('categories').insert(inserts)
+    if (insertError) throw insertError
+  }
 }
 
 export async function saveCloudWallet(wallet: Wallet) {

@@ -45,6 +45,14 @@ Production: https://pocketgo.netlify.app
 - Feedback beta tersimpan di `beta_feedback`; form meminta pengguna tidak memasukkan data sensitif.
 - Privacy Policy tersedia di `/privacy` dan Terms di `/terms`.
 
+## Localization
+
+- Bahasa V1: Bahasa Indonesia (`id-ID`) dan English (`en-US`).
+- Region V1: Indonesia, United States, dan Generic Global.
+- Preferensi bahasa, locale, region, dan currency tersimpan di profil pengguna.
+- Currency, angka, tanggal, kategori default, dan contoh wallet mengikuti locale/region.
+- Bahasa dapat diganti di auth, onboarding, dan Settings → Language & Region.
+
 ## Perintah kualitas
 
 ```bash

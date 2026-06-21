@@ -4,7 +4,7 @@
 - Implementation screenshot: `tmp/visual-qa/04-home-viewport.png`
 - Side-by-side comparison: `tmp/visual-qa/home-comparison.png`
 - Viewport: 390 × 844
-- State: completed onboarding with two wallets, income, expense, linked transfer, recurring bill, goal, and paylater debt
+- State: completed localized onboarding with two wallets, income, expense, linked transfer, recurring bill, goal, and PayLater debt
 - Full-view evidence: Home, Plan, Transactions, Insight, More, onboarding, and transaction sheet captured by `npm run qa:visual`
 - Focused evidence: transaction sheet captured at `tmp/visual-qa/06-transaction-sheet.png`; focused review was required because scrollability and sticky submit behavior are not visible in the Home comparison
 
@@ -18,14 +18,14 @@ No actionable P0, P1, or P2 findings remain.
 - Spacing and layout: Home density now fits the 390 × 844 viewport with the quick-add action above bottom navigation. Plan, Insight, and other routes have sufficient scroll clearance.
 - Colors and tokens: navy, ivory, sage, amber, and coral states consistently match the reference direction and retain accessible contrast.
 - Image quality: the generated PocketGo bitmap icon is sharp and used consistently; app UI icons use Lucide rather than handcrafted SVG or CSS art.
-- Copy and content: Indonesian copy is short, practical, non-judgmental, and decision-first.
-- Interactions: onboarding, wallet creation, expense, income, linked transfer, recurring bill, goal, debt, navigation, and scrollable transaction sheet were exercised.
+- Copy and content: Indonesian and English core flows are consistent, practical, and do not mix languages.
+- Interactions: auth language switching, localized onboarding, wallet creation, expense, income, linked transfer, recurring bill, goal, debt, language/region/currency switching, navigation, and scrollable transaction sheet were exercised.
 
 ## Functional evidence
 
-- Final total balance after QA transactions: Rp3.850.000.
+- Final total balance after QA transactions: Rp3.850.000; the same state rendered as $3,850,000.00 after switching to English/US/USD.
 - Transfer persists as two linked rows but renders once in the transaction list.
-- Transaction sheet: `clientHeight 745`, `scrollHeight 920`, `overflowY auto`.
+- Transaction sheet: `clientHeight 745`, `scrollHeight 1066`, `overflowY auto`.
 - Body width equals viewport width (`390px`); no horizontally overflowing elements detected.
 - No console errors or uncaught page errors.
 
@@ -37,6 +37,7 @@ No actionable P0, P1, or P2 findings remain.
 - Removed the global floating action overlay that covered Plan and Insight content.
 - Added a compact mobile quick-add action above bottom navigation.
 - Added repeatable Playwright QA through `npm run qa:visual`.
+- Added locale switching checks for auth and Settings, plus IDR/USD formatting assertions.
 
 ## Follow-up polish
 
