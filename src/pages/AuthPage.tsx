@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { Link } from 'react-router-dom'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -72,6 +73,7 @@ export function AuthPage() {
           <button className="primary-button" disabled={loading}>{loading ? 'Memproses...' : mode === 'login' ? 'Masuk' : mode === 'signup' ? 'Buat akun' : 'Kirim tautan'}</button>
         </form>
         <p className="auth-trust"><ShieldCheck size={15} /> PocketGo tidak meminta akses rekening bank.</p>
+        <div className="auth-legal-links"><Link to="/privacy">Privasi</Link><Link to="/terms">Ketentuan</Link></div>
       </section>
     </main>
   )

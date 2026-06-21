@@ -6,6 +6,7 @@ dist
 .DS_Store
 coverage
 tmp
+.vite
 
 # Local Netlify folder
 .netlify

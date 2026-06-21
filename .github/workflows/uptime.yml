@@ -1,0 +1,25 @@
+name: PocketGo uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check app and SPA routes
+        run: |
+          curl --fail --silent --show-error --retry 3 https://pocketgo.netlify.app/ > /dev/null
+          curl --fail --silent --show-error --retry 3 https://pocketgo.netlify.app/plan > /dev/null
+          curl --fail --silent --show-error --retry 3 https://pocketgo.netlify.app/health.json | grep '"status": "ok"'
+          status="$(curl --silent --show-error --retry 3 --output /dev/null --write-out '%{http_code}' https://jozyoifsfkojsokhsfcl.supabase.co/auth/v1/health)"
+          case "$status" in
+            200|401) ;;
+            *) exit 1 ;;
+          esac

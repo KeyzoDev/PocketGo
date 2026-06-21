@@ -39,6 +39,11 @@ async function clickButton(name) {
 }
 
 await page.goto(baseURL, { waitUntil: 'networkidle' })
+await page.goto(`${baseURL}/privacy`, { waitUntil: 'networkidle' })
+await page.getByRole('heading', { name: 'Kebijakan Privasi' }).waitFor()
+await page.goto(`${baseURL}/terms`, { waitUntil: 'networkidle' })
+await page.getByRole('heading', { name: 'Ketentuan Penggunaan' }).waitFor()
+await page.goto(baseURL, { waitUntil: 'networkidle' })
 if (await page.getByRole('heading', { name: 'Masuk ke uangmu' }).isVisible().catch(() => false)) {
   if (!process.env.TEST_EMAIL || !process.env.TEST_PASSWORD) {
     throw new Error('TEST_EMAIL dan TEST_PASSWORD diperlukan untuk QA pada mode Supabase.')
@@ -191,8 +196,15 @@ await screenshot('07-insight-viewport', false)
 await page.getByRole('link', { name: 'Lainnya' }).click()
 await page.getByRole('heading', { name: 'Lainnya' }).waitFor()
 await screenshot('08-more')
+await page.getByRole('link', { name: 'Kirim feedback beta' }).click()
+await page.getByRole('heading', { name: 'Bantu PocketGo lebih jelas' }).waitFor()
+await page.getByLabel('Jenis masukan').selectOption('accuracy')
+await page.getByLabel('Pengalaman keseluruhan').selectOption('4')
+await page.getByLabel('Masukan', { exact: true }).fill('Perhitungan mudah dipahami dan perlu terus dijaga akurasinya.')
+await page.getByRole('button', { name: 'Kirim masukan' }).click()
+await page.getByText('Terima kasih. Masukanmu sudah tersimpan.').waitFor()
 await page.evaluate(() => scrollTo(0, 0))
-await screenshot('08-more-viewport', false)
+await screenshot('09-feedback-viewport', false)
 
 const layoutChecks = await page.evaluate(() => {
   const overflowing = [...document.querySelectorAll('body *')]

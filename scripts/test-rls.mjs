@@ -124,6 +124,24 @@ try {
   const { error: deleteBudgetError } = await userA.from('budgets').delete().eq('id', budget.id)
   if (deleteBudgetError) throw deleteBudgetError
 
+  const { data: feedback, error: feedbackError } = await userA
+    .from('beta_feedback')
+    .insert({
+      rating: 4,
+      category: 'confusing',
+      message: 'RLS beta feedback test',
+      route: '/more',
+    })
+    .select()
+    .single()
+  if (feedbackError) throw feedbackError
+  const { data: hiddenFeedback, error: hiddenFeedbackError } = await userB
+    .from('beta_feedback')
+    .select('*')
+    .eq('id', feedback.id)
+  if (hiddenFeedbackError) throw hiddenFeedbackError
+  assert(hiddenFeedback.length === 0, 'Akun B dapat membaca feedback akun A.')
+
   const { data: transferGroupId, error: transferError } = await userA.rpc('create_transfer', {
     source_wallet_id: walletA.id,
     destination_wallet_id: walletA2.id,
@@ -179,6 +197,7 @@ try {
       'user_id tidak dapat dipalsukan',
       'akun A dapat create/update/delete budget sendiri',
       'budget akun A tidak terlihat oleh akun B',
+      'feedback akun A tidak terlihat oleh akun B',
       'transfer membuat dua row tertaut',
       'transfer tidak terlihat oleh akun B',
       'RPC akun B tidak dapat menghapus transfer akun A',
