@@ -1,0 +1,17 @@
+{
+  "name": "PocketGo: Track Your Money",
+  "short_name": "PocketGo",
+  "description": "Track money, plan ahead, and know what is safe to spend.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f5ee",
+  "theme_color": "#0b2447",
+  "icons": [
+    {
+      "src": "/pocketgo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
