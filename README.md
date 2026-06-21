@@ -36,6 +36,15 @@ Saat Supabase terkonfigurasi, aplikasi menggunakan Supabase sebagai source of tr
 - Tambahkan URL produksi Netlify ke Supabase Authentication → URL Configuration → Redirect URLs.
 - `netlify.toml` sudah menyediakan SPA rewrite ke `index.html`.
 
+Production: https://pocketgo.netlify.app
+
+## Monitoring dan beta
+
+- GitHub Actions memeriksa app, SPA route, health file, dan Supabase Auth setiap 15 menit.
+- Runtime error pengguna yang sudah login dicatat secara sanitasi ke `client_errors`.
+- Feedback beta tersimpan di `beta_feedback`; form meminta pengguna tidak memasukkan data sensitif.
+- Privacy Policy tersedia di `/privacy` dan Terms di `/terms`.
+
 ## Perintah kualitas
 
 ```bash

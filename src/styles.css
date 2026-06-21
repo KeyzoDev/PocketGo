@@ -48,6 +48,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .auth-card h1 { margin-top: 5px; color: var(--navy); font-size: 29px; line-height: 1.2; }
 .auth-lead { margin: 9px 0 22px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .auth-trust { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 17px; color: var(--muted); font-size: 9px; }
+.auth-legal-links { display: flex; justify-content: center; gap: 18px; margin-top: 12px; color: var(--navy); font-size: 9px; font-weight: 700; }
 .standard-page { padding: 28px 20px 48px; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .page-header p, .hero-heading p { color: var(--muted); font-size: 14px; font-weight: 600; }
@@ -231,8 +232,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .auth-status strong { font-size: 12px; }
 .auth-status p { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .settings-list { margin-top: 9px; }
-.settings-list > button, .static-setting { display: grid; width: 100%; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; align-items: center; padding: 13px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
-.settings-list > button > span:nth-child(2), .static-setting > span:nth-child(2) { display: flex; flex-direction: column; gap: 3px; }
+.settings-list > button, .static-setting, .settings-link { display: grid; width: 100%; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; align-items: center; padding: 13px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
+.settings-list > button > span:nth-child(2), .static-setting > span:nth-child(2), .settings-link > span:nth-child(2) { display: flex; flex-direction: column; gap: 3px; }
 .settings-list strong, .static-setting strong { font-size: 12px; }
 .settings-list small, .static-setting small { color: var(--muted); font-size: 9px; line-height: 1.45; }
 .danger-action strong { color: #9b342e; }
@@ -240,6 +241,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .app-footer > div { display: flex; flex-direction: column; gap: 3px; }
 .app-footer strong { color: var(--navy); font-size: 13px; }
 .app-footer small { max-width: 380px; color: var(--muted); font-size: 9px; line-height: 1.4; }
+.app-footer span { color: var(--navy); font-size: 9px; font-weight: 700; }
+.legal-page { min-height: 100dvh; padding: 26px 20px 60px; background: var(--ivory); }
+.legal-page article { width: min(100%, 720px); margin: 0 auto; }
+.legal-back { display: inline-flex; align-items: center; gap: 7px; color: var(--navy); font-size: 11px; font-weight: 800; }
+.legal-icon { display: grid; width: 54px; height: 54px; margin-top: 30px; place-items: center; border-radius: 17px; background: #dfe8f3; color: var(--navy); }
+.legal-page .eyebrow { margin-top: 18px; color: var(--sage-deep); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.legal-page h1 { margin-top: 5px; color: var(--navy); font-size: 32px; line-height: 1.18; }
+.legal-lead { margin: 10px 0 28px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.legal-page h2 { margin-top: 25px; color: var(--navy); font-size: 17px; }
+.legal-page article > p:not(.eyebrow):not(.legal-lead):not(.legal-note) { margin-top: 8px; color: #4f5a70; font-size: 12px; line-height: 1.75; }
+.legal-page a:not(.legal-back) { color: #194f88; text-decoration: underline; text-underline-offset: 3px; }
+.legal-note { margin-top: 30px; padding: 14px; border-radius: 13px; background: #e9eef5; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.feedback-form { margin-top: 26px; padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); }
 
 .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-top: 32px; background: rgba(7, 19, 34, .58); }
 .modal-sheet { display: flex; width: min(100%, 640px); max-height: calc(100dvh - 24px); flex-direction: column; border-radius: 24px 24px 0 0; background: var(--paper); box-shadow: 0 -14px 50px rgba(0,0,0,.16); }

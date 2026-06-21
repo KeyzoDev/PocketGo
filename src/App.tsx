@@ -11,11 +11,22 @@ const MorePage = lazy(() => import('./pages/MorePage').then((module) => ({ defau
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((module) => ({ default: module.OnboardingPage })))
 const AuthPage = lazy(() => import('./pages/AuthPage').then((module) => ({ default: module.AuthPage })))
 const PasswordRecoveryPage = lazy(() => import('./pages/PasswordRecoveryPage').then((module) => ({ default: module.PasswordRecoveryPage })))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then((module) => ({ default: module.PrivacyPage })))
+const TermsPage = lazy(() => import('./pages/TermsPage').then((module) => ({ default: module.TermsPage })))
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then((module) => ({ default: module.FeedbackPage })))
 
 export function App() {
   const { state, session, authLoading, dataLoading, isCloudMode, passwordRecovery, syncError, reload } = useAppStore()
   const location = useLocation()
+  const isPublicLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
+  if (isPublicLegalPage) {
+    return (
+      <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
+        {location.pathname === '/privacy' ? <PrivacyPage /> : <TermsPage />}
+      </Suspense>
+    )
+  }
   if (authLoading || (isCloudMode && session && dataLoading)) {
     return <div className="page-loading" role="status">Menyiapkan data PocketGo...</div>
   }
@@ -52,6 +63,7 @@ export function App() {
   return (
     <Suspense fallback={<div className="page-loading" role="status">Memuat PocketGo...</div>}>
       <Routes>
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route element={<AppShell />}>
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route index element={<HomePage />} />

@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Download,
   LockKeyhole,
+  MessageSquareText,
   Moon,
   Plus,
   RotateCcw,
@@ -12,6 +13,7 @@ import {
   WalletCards,
 } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createId } from '../lib/id'
 import { formatCurrency, parseAmount } from '../lib/format'
 import { walletBalances } from '../domain/ledger'
@@ -135,7 +137,14 @@ export function MorePage() {
         </div>
       </section>
 
-      <footer className="app-footer"><img className="brand-icon" src="/pocketgo-icon.png" alt="" /><div><strong>PocketGo</strong><small>Membantu melihat apa yang aman, berisiko, dan perlu dilakukan berikutnya.</small></div></footer>
+      <section className="settings-section">
+        <h2>Bantu pengembangan</h2>
+        <div className="settings-list">
+          <Link className="settings-link" to="/feedback" state={{ from: '/more' }}><span className="brief-icon navy"><MessageSquareText size={19} /></span><span><strong>Kirim feedback beta</strong><small>Laporkan bug, bagian membingungkan, atau ide perbaikan.</small></span><ChevronRight size={18} /></Link>
+        </div>
+      </section>
+
+      <footer className="app-footer"><img className="brand-icon" src="/pocketgo-icon.png" alt="" /><div><strong>PocketGo</strong><small>Membantu melihat apa yang aman, berisiko, dan perlu dilakukan berikutnya.</small><span><Link to="/privacy">Privasi</Link> · <Link to="/terms">Ketentuan</Link></span></div></footer>
 
       <Modal open={walletForm} title={editingWallet ? 'Edit dompet' : 'Tambah dompet'} onClose={() => { setWalletForm(false); setEditingWallet(undefined) }}>
         <form className="form-stack" onSubmit={submitWallet}>
