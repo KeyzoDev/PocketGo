@@ -59,8 +59,8 @@ export function AuthPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <label className="auth-language">{t('auth.language')}
-          <select value={language} onChange={(event) => selectLanguage(event.target.value as SupportedLocale)}>
+        <label className="auth-language">
+          <select aria-label={t('auth.language')} value={language} onChange={(event) => selectLanguage(event.target.value as SupportedLocale)}>
             <option value="id-ID">ID</option>
             <option value="en-US">EN</option>
           </select>

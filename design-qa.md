@@ -6,7 +6,7 @@
 - Viewport: 390 × 844
 - State: completed localized onboarding with two wallets, income, expense, linked transfer, recurring bill, goal, and PayLater debt
 - Full-view evidence: Home, Plan, Transactions, Insight, More, onboarding, and transaction sheet captured by `npm run qa:visual`
-- Focused evidence: transaction sheet captured at `tmp/visual-qa/06-transaction-sheet.png`; focused review was required because scrollability and sticky submit behavior are not visible in the Home comparison
+- Focused evidence: compact auth selector at `tmp/visual-qa/00-auth-compact-language.png`, chooser at `tmp/visual-qa/06-transaction-chooser.png`, and transaction form at `tmp/visual-qa/07-transaction-sheet.png`
 
 ## Findings
 
@@ -20,6 +20,7 @@ No actionable P0, P1, or P2 findings remain.
 - Image quality: the generated PocketGo bitmap icon is sharp and used consistently; app UI icons use Lucide rather than handcrafted SVG or CSS art.
 - Copy and content: Indonesian and English core flows are consistent, practical, and do not mix languages.
 - Interactions: auth language switching, localized onboarding, wallet creation, expense, income, linked transfer, recurring bill, goal, debt, language/region/currency switching, navigation, and scrollable transaction sheet were exercised.
+- Transaction entry: the global plus and page add actions open a four-option chooser before the selected transaction form.
 
 ## Functional evidence
 
@@ -28,6 +29,7 @@ No actionable P0, P1, or P2 findings remain.
 - Transaction sheet: `clientHeight 745`, `scrollHeight 1066`, `overflowY auto`.
 - Body width equals viewport width (`390px`); no horizontally overflowing elements detected.
 - No console errors or uncaught page errors.
+- PWA manifest uses standalone display, app icons are present, and `sw.js` responds successfully.
 
 ## Patches made
 
@@ -38,6 +40,7 @@ No actionable P0, P1, or P2 findings remain.
 - Added a compact mobile quick-add action above bottom navigation.
 - Added repeatable Playwright QA through `npm run qa:visual`.
 - Added locale switching checks for auth and Settings, plus IDR/USD formatting assertions.
+- Removed the obsolete Home quick-add section, added a global plus FAB, fixed transaction icon direction/colors, verified formatted IDR input, and asserted category chips are unique.
 
 ## Follow-up polish
 

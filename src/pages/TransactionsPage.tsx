@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
 import { EmptyState } from '../components/EmptyState'
 import { TransactionSheet } from '../components/TransactionSheet'
+import type { EntryMode } from '../components/TransactionSheet'
+import { TransactionTypeChooser } from '../components/TransactionTypeChooser'
 import { formatCurrency, formatDate } from '../lib/format'
 import { useAppStore } from '../store/useAppStore'
 import { useLocalization } from '../i18n'
@@ -24,7 +26,8 @@ export function TransactionsPage() {
   const [type, setType] = useState('all')
   const [walletId, setWalletId] = useState('all')
   const [editing, setEditing] = useState<Transaction | undefined>()
-  const [adding, setAdding] = useState(false)
+  const [choosing, setChoosing] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode | null>(null)
 
   const filtered = useMemo(() => {
     const seenTransfers = new Set<string>()
@@ -69,7 +72,7 @@ export function TransactionsPage() {
     <div className="standard-page page-width">
       <header className="page-header">
         <div><p>{t('transactions.history')}</p><h1>{t('transactions.title')}</h1></div>
-        <button className="primary-button small" type="button" onClick={() => setAdding(true)}>{t('common.add')}</button>
+        <button className="primary-button small" type="button" onClick={() => setChoosing(true)}>{t('common.add')}</button>
       </header>
       <div className="toolbar">
         <label className="search-field"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('transactions.search')} /></label>
@@ -90,7 +93,7 @@ export function TransactionsPage() {
       </div>
 
       {state.transactions.length === 0 ? (
-        <EmptyState icon={WalletCards} title={t('transactions.emptyTitle')} body={t('transactions.emptyBody')} action={t('home.addTransaction')} onAction={() => setAdding(true)} />
+        <EmptyState icon={WalletCards} title={t('transactions.emptyTitle')} body={t('transactions.emptyBody')} action={t('home.addTransaction')} onAction={() => setChoosing(true)} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={Search} title={t('transactions.notFound')} body={t('transactions.notFoundBody')} />
       ) : (
@@ -126,7 +129,15 @@ export function TransactionsPage() {
           ))}
         </div>
       )}
-      <TransactionSheet open={adding} onClose={() => setAdding(false)} />
+      <TransactionTypeChooser
+        open={choosing}
+        onClose={() => setChoosing(false)}
+        onSelect={(mode) => {
+          setChoosing(false)
+          setEntryMode(mode)
+        }}
+      />
+      <TransactionSheet key={entryMode ?? 'closed'} open={Boolean(entryMode)} initialMode={entryMode ?? undefined} onClose={() => setEntryMode(null)} />
       <TransactionSheet key={editing?.id ?? 'none'} open={Boolean(editing)} transaction={editing} onClose={() => setEditing(undefined)} />
     </div>
   )
