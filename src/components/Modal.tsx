@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
+import { useLocalization } from '../i18n'
 
 export function Modal({
   open,
@@ -12,6 +13,7 @@ export function Modal({
   children: ReactNode
   onClose: () => void
 }) {
+  const { t } = useLocalization()
   useEffect(() => {
     if (!open) return
     const previous = document.body.style.overflow
@@ -37,7 +39,7 @@ export function Modal({
         <div className="sheet-handle" aria-hidden="true" />
         <header className="modal-header">
           <h2 id="modal-title">{title}</h2>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Tutup">
+          <button className="icon-button" type="button" onClick={onClose} aria-label={t('common.close')}>
             <X size={20} />
           </button>
         </header>

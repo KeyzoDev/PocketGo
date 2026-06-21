@@ -12,17 +12,18 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { format, parseISO } from 'date-fns'
-import { id } from 'date-fns/locale'
 import { calculateForecast, calculateSafeToSpend, debtSummary, detectSmallSpendingLeak } from '../domain/calculations'
 import { totalBalance } from '../domain/ledger'
-import { formatCurrency } from '../lib/format'
+import { formatCurrency, formatDate } from '../lib/format'
+import { useLocalization } from '../i18n'
 import { useAppStore } from '../store/useAppStore'
 import { EmptyState } from '../components/EmptyState'
 import { TransactionSheet } from '../components/TransactionSheet'
 
 export function HomePage() {
   const { state } = useAppStore()
+  const { t, locale, currency } = useLocalization()
+  const money = (value: number) => formatCurrency(value, currency, locale)
   const navigate = useNavigate()
   const [adding, setAdding] = useState(false)
   const safe = useMemo(() => calculateSafeToSpend(state), [state])
@@ -46,26 +47,26 @@ export function HomePage() {
           <div className="brand-lockup light">
             <div><strong>PocketGo</strong><small>Track Your Money</small></div>
           </div>
-          <button className="avatar-button" type="button" onClick={() => navigate('/more')} aria-label="Buka profil">
+          <button className="avatar-button" type="button" onClick={() => navigate('/more')} aria-label={t('home.profile')}>
             {firstName ? firstName.charAt(0).toUpperCase() : 'P'}
           </button>
         </div>
         <div className="hero-heading">
-          <p>Ringkasan hari ini</p>
-          <h1>{firstName ? `Hai, ${firstName}` : 'Kejelasan uangmu'}</h1>
+          <p>{t('home.summary')}</p>
+          <h1>{firstName ? t('home.hello', { name: firstName }) : t('home.clarity')}</h1>
         </div>
         <div className="money-summary">
           <div>
-            <span>Saldo total</span>
-            <strong>{formatCurrency(balance)}</strong>
+            <span>{t('home.totalBalance')}</span>
+            <strong>{money(balance)}</strong>
           </div>
           <div className="summary-divider" />
           <div>
-            <span>Aman dibelanjakan</span>
-            <strong className={safe.status}>{formatCurrency(safe.safeToday)}</strong>
+            <span>{t('home.safeToSpend')}</span>
+            <strong className={safe.status}>{money(safe.safeToday)}</strong>
             <small className={`status-pill ${safe.status}`}>
               {safe.status === 'safe' ? <Check size={14} /> : <CircleAlert size={14} />}
-              {safe.status === 'safe' ? 'Aman' : safe.status === 'caution' ? 'Perlu hati-hati' : 'Berisiko'}
+              {safe.status === 'safe' ? t('home.safe') : safe.status === 'caution' ? t('home.caution') : t('home.risky')}
             </small>
           </div>
         </div>
@@ -76,18 +77,18 @@ export function HomePage() {
               <strong>
                 {balance > 0
                   ? safe.safeTotal >= 0
-                    ? 'Uangmu diperkirakan cukup sampai gajian'
-                    : 'Kewajiban lebih besar dari saldo tersedia'
-                  : 'Tambahkan saldo untuk mulai menghitung'}
+                    ? t('home.enough')
+                    : t('home.obligationsHigh')
+                  : t('home.addBalance')}
               </strong>
-              <small>{safe.confidence === 'estimated' ? 'Perkiraan memakai akhir bulan' : 'Berdasarkan rencana yang tercatat'}</small>
+              <small>{safe.confidence === 'estimated' ? t('home.estimated') : t('home.planned')}</small>
             </div>
-            <b>{safe.days}<small> hari</small></b>
+            <b>{safe.days}<small> {t('common.days')}</small></b>
           </div>
           <div className="forecast-timeline">
             {forecast.map((point, index) => (
               <div key={point.date}>
-                <span>{index === 0 ? 'Hari ini' : format(parseISO(point.date), 'EEE', { locale: id })}</span>
+                <span>{index === 0 ? t('common.today') : formatDate(point.date, locale, { weekday: 'short' })}</span>
                 <i className={point.status}>{point.status === 'safe' ? <Check size={15} /> : <CircleAlert size={15} />}</i>
               </div>
             ))}
@@ -99,26 +100,26 @@ export function HomePage() {
         {state.wallets.length === 0 ? (
           <EmptyState
             icon={WalletCards}
-            title="Mulai dari tempat uangmu disimpan"
-            body="Tambahkan dompet pertama agar PocketGo dapat menghitung saldo dan uang yang aman dibelanjakan."
-            action="Tambah dompet"
-            onAction={() => navigate('/more')}
+            title={t('home.startTitle')}
+            body={t('home.startBody')}
+            action={t('home.startAction')}
+            onAction={() => setAdding(true)}
           />
         ) : (
           <>
             <section className="brief-section">
-              <h2>Yang perlu diperhatikan</h2>
+              <h2>{t('home.attention')}</h2>
               <div className="brief-list">
                 {nextRule ? (
                   <button type="button" onClick={() => navigate('/plan')}>
                     <span className="brief-icon amber"><ReceiptText size={20} /></span>
-                    <span><strong>{nextRule.name}</strong><small>Jatuh tempo {format(parseISO(nextRule.nextDueDate), 'd MMM', { locale: id })}</small></span>
-                    <b>{formatCurrency(nextRule.amount)}</b><ChevronRight size={18} />
+                    <span><strong>{nextRule.name}</strong><small>{t('home.due', { date: formatDate(nextRule.nextDueDate, locale, { day: 'numeric', month: 'short' }) })}</small></span>
+                    <b>{money(nextRule.amount)}</b><ChevronRight size={18} />
                   </button>
                 ) : (
                   <button type="button" onClick={() => navigate('/plan')}>
                     <span className="brief-icon amber"><ReceiptText size={20} /></span>
-                    <span><strong>Belum ada tagihan terjadwal</strong><small>Catat agar forecast lebih akurat.</small></span>
+                    <span><strong>{t('home.noBills')}</strong><small>{t('home.noBillsBody')}</small></span>
                     <ChevronRight size={18} />
                   </button>
                 )}
@@ -126,54 +127,54 @@ export function HomePage() {
                   <button type="button" onClick={() => navigate('/plan')}>
                     <span className="brief-icon coral"><CircleAlert size={20} /></span>
                     <span>
-                      <strong>{debt.status === 'risky' || debt.status === 'heavy' ? 'Tekanan cicilan perlu perhatian' : 'Cicilan masih terpantau'}</strong>
-                      <small>{debt.ratio === null ? 'Catat pemasukan untuk melihat rasio utang.' : `${Math.round(debt.ratio)}% dari pemasukan bulan ini`}</small>
+                      <strong>{debt.status === 'risky' || debt.status === 'heavy' ? t('home.debtPressure') : t('home.debtTracked')}</strong>
+                      <small>{debt.ratio === null ? t('home.addIncomeRatio') : t('home.incomeRatio', { value: Math.round(debt.ratio) })}</small>
                     </span>
-                    <b>{formatCurrency(debt.monthlyPayment)}</b><ChevronRight size={18} />
+                    <b>{money(debt.monthlyPayment)}</b><ChevronRight size={18} />
                   </button>
                 ) : null}
               </div>
             </section>
 
             <section className="brief-section">
-              <div className="section-title-row"><h2>Tujuan</h2><button type="button" onClick={() => navigate('/plan')}>Lihat rencana <ChevronRight size={16} /></button></div>
+              <div className="section-title-row"><h2>{t('home.goals')}</h2><button type="button" onClick={() => navigate('/plan')}>{t('home.viewPlan')} <ChevronRight size={16} /></button></div>
               {topGoal ? (
                 <button className="goal-row" type="button" onClick={() => navigate('/plan')}>
                   <span className="brief-icon sage"><GoalIcon size={20} /></span>
                   <span className="goal-copy">
                     <strong>{topGoal.name}</strong>
-                    <small>Target {formatCurrency(topGoal.targetAmount)} · {format(parseISO(topGoal.targetDate), 'd MMM yyyy', { locale: id })}</small>
+                    <small>{t('home.target', { amount: money(topGoal.targetAmount), date: formatDate(topGoal.targetDate, locale) })}</small>
                     <i><em style={{ width: `${Math.min(100, (topGoal.currentAmount / topGoal.targetAmount) * 100)}%` }} /></i>
                   </span>
                   <b>{Math.round((topGoal.currentAmount / topGoal.targetAmount) * 100)}%</b>
                 </button>
               ) : (
-                <div className="compact-empty"><GoalIcon size={20} /><span><strong>Belum ada tujuan</strong><small>Buat target dana darurat, pendidikan, kendaraan, atau kebutuhan lain.</small></span><button onClick={() => navigate('/plan')}>Buat</button></div>
+                <div className="compact-empty"><GoalIcon size={20} /><span><strong>{t('home.noGoals')}</strong><small>{t('home.noGoalsBody')}</small></span><button onClick={() => navigate('/plan')}>{t('common.create')}</button></div>
               )}
             </section>
 
             <section className="brief-section">
-              <h2>Saran hari ini</h2>
+              <h2>{t('home.advice')}</h2>
               <button className="advisor-row" type="button" onClick={() => leak ? navigate('/insight') : setAdding(true)}>
                 <span className="brief-icon green"><Lightbulb size={20} /></span>
                 <span>
-                  <strong>{leak ? 'Pembelian kecil mulai terkumpul' : 'Catat transaksi harianmu'}</strong>
-                  <small>{leak ? `${leak.count} transaksi kecil mencapai ${formatCurrency(leak.total)}.` : 'Data rutin membuat rencana dan peringatan lebih akurat.'}</small>
+                  <strong>{leak ? t('home.smallPurchases') : t('home.recordDaily')}</strong>
+                  <small>{leak ? t('home.smallPurchasesBody', { count: leak.count, amount: money(leak.total) }) : t('home.recordDailyBody')}</small>
                 </span>
                 <ArrowRight size={18} />
               </button>
             </section>
 
             <section className="quick-add-section">
-              <h2>Tambah transaksi</h2>
+              <h2>{t('home.addTransaction')}</h2>
               <button className="quick-add-card" type="button" onClick={() => setAdding(true)}>
                 <span><WalletCards size={21} /></span>
-                <div><strong>Catat pergerakan uang</strong><small>Pengeluaran, pemasukan, atau transfer</small></div>
+                <div><strong>{t('home.moneyMovement')}</strong><small>{t('home.moneyMovementBody')}</small></div>
                 <ArrowRight size={18} />
               </button>
             </section>
 
-            <div className="privacy-note"><ShieldCheck size={16} /> Data lokal hanya tersimpan di perangkat ini.</div>
+            <div className="privacy-note"><ShieldCheck size={16} /> {t('home.privacy')}</div>
           </>
         )}
       </section>

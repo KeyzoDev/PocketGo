@@ -4,6 +4,9 @@ import { formatISO } from 'date-fns'
 import { Modal } from './Modal'
 import { useAppStore } from '../store/useAppStore'
 import { parseAmount } from '../lib/format'
+import { currencySymbol } from '../lib/format'
+import { useLocalization } from '../i18n'
+import { localizedCategoryName } from '../i18n/regions'
 import type { Transaction, TransactionType } from '../types'
 
 type EntryMode = 'expense' | 'income' | 'transfer' | 'adjustment'
@@ -26,6 +29,7 @@ export function TransactionSheet({
   transaction?: Transaction
 }) {
   const { state, createTransaction, createTransfer, editTransaction, editTransfer } = useAppStore()
+  const { t, locale, currency, countryCode } = useLocalization()
   const initial = initialMode ?? modeFromTransaction(transaction)
   const pair = transaction?.transferGroupId
     ? state.transactions.find(
@@ -69,7 +73,7 @@ export function TransactionSheet({
     event.preventDefault()
     setError('')
     setSaving(true)
-    const numericAmount = parseAmount(amount)
+    const numericAmount = parseAmount(amount, locale)
     try {
       if (mode === 'transfer') {
         const input = {
@@ -100,26 +104,27 @@ export function TransactionSheet({
       }
       onClose()
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Transaksi belum dapat disimpan.')
+      setError(caught instanceof Error ? caught.message : t('entry.failed'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal open={open} title={transaction ? 'Edit transaksi' : 'Tambah transaksi'} onClose={onClose}>
+    <Modal open={open} title={transaction ? t('entry.editTitle') : t('entry.addTitle')} onClose={onClose}>
       {activeWallets.length === 0 ? (
         <div className="inline-notice danger">
-          Tambahkan dompet terlebih dahulu agar transaksi punya sumber saldo.
+          {t('entry.noWallet')}
         </div>
       ) : (
         <form className="form-stack" onSubmit={submit}>
-          <div className="segmented-control" aria-label="Jenis transaksi">
+          {!transaction ? <div className="transaction-intro"><strong>{t('entry.addTitle')}</strong><small>{t('entry.choose')}</small></div> : null}
+          <div className="segmented-control" aria-label={t('transactions.filterType')}>
             {([
-              ['expense', ArrowUp, 'Pengeluaran'],
-              ['income', ArrowDown, 'Pemasukan'],
-              ['transfer', ArrowLeftRight, 'Transfer'],
-              ['adjustment', SlidersHorizontal, 'Sesuaikan'],
+              ['expense', ArrowUp, t('transactions.expense')],
+              ['income', ArrowDown, t('transactions.income')],
+              ['transfer', ArrowLeftRight, t('transactions.transfer')],
+              ['adjustment', SlidersHorizontal, t('entry.adjustment')],
             ] as const).map(([value, Icon, label]) => (
               <button
                 key={value}
@@ -138,47 +143,47 @@ export function TransactionSheet({
           </div>
 
           <label className="amount-field">
-            <span>Jumlah</span>
-            <div><small>Rp</small><input autoFocus inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" /></div>
+            <span>{t('entry.amount')}</span>
+            <div><small>{currencySymbol(currency, locale)}</small><input autoFocus inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" /></div>
           </label>
 
           {mode === 'transfer' ? (
             <div className="form-grid">
-              <label>Dompet asal
+              <label>{t('entry.sourceWallet')}
                 <select value={source?.walletId ?? walletId} onChange={(event) => setWalletId(event.target.value)} disabled={Boolean(source)}>
-                  <option value="">Pilih dompet</option>
+                  <option value="">{t('entry.selectWallet')}</option>
                   {activeWallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                 </select>
               </label>
-              <label>Dompet tujuan
+              <label>{t('entry.destinationWallet')}
                 <select value={destinationWalletId} onChange={(event) => setDestinationWalletId(event.target.value)}>
-                  <option value="">Pilih dompet</option>
+                  <option value="">{t('entry.selectWallet')}</option>
                   {activeWallets.filter((wallet) => wallet.id !== (source?.walletId ?? walletId)).map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                 </select>
               </label>
             </div>
           ) : (
             <>
-              <label>Dompet
+              <label>{t('entry.wallet')}
                 <select value={walletId} onChange={(event) => setWalletId(event.target.value)} required>
-                  <option value="">Pilih dompet</option>
+                  <option value="">{t('entry.selectWallet')}</option>
                   {activeWallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
                 </select>
               </label>
               {mode === 'adjustment' ? (
-                <label>Arah penyesuaian
+                <label>{t('entry.direction')}
                   <select value={adjustmentDirection} onChange={(event) => setAdjustmentDirection(event.target.value as 'increase' | 'decrease')}>
-                    <option value="increase">Tambah saldo</option>
-                    <option value="decrease">Kurangi saldo</option>
+                    <option value="increase">{t('entry.increase')}</option>
+                    <option value="decrease">{t('entry.decrease')}</option>
                   </select>
                 </label>
               ) : (
                 <fieldset className="category-fieldset">
-                  <legend>Kategori</legend>
+                  <legend>{t('entry.category')}</legend>
                   <div className="chip-list">
                     {categories.map((category) => (
                       <button key={category.id} type="button" className={categoryId === category.id ? 'chip active' : 'chip'} onClick={() => setCategoryId(category.id)}>
-                        {category.name}
+                        {localizedCategoryName(category.localizationKey, category.name, countryCode)}
                       </button>
                     ))}
                   </div>
@@ -187,19 +192,19 @@ export function TransactionSheet({
             </>
           )}
 
-          <label>Tanggal
+          <label>{t('entry.date')}
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
           </label>
           {mode !== 'transfer' && mode !== 'adjustment' ? (
-            <label>Merchant <span className="optional">opsional</span>
-              <input value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="Contoh: Warung dekat kantor" />
+            <label>{t('entry.merchant')} <span className="optional">{t('common.optional')}</span>
+              <input value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder={t('entry.merchantPlaceholder')} />
             </label>
           ) : null}
-          <label>Catatan <span className="optional">opsional</span>
-            <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Tambahkan konteks singkat" rows={2} />
+          <label>{t('entry.note')} <span className="optional">{t('common.optional')}</span>
+            <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder={t('entry.notePlaceholder')} rows={2} />
           </label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
-          <button className="primary-button sticky-submit" type="submit" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan transaksi'}</button>
+          <button className="primary-button sticky-submit" type="submit" disabled={saving}>{saving ? t('common.saving') : t('entry.save')}</button>
         </form>
       )}
     </Modal>

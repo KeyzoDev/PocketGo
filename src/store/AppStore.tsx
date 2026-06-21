@@ -13,6 +13,7 @@ import {
   saveCloudDebt,
   saveCloudGoal,
   saveCloudProfile,
+  syncCloudDefaultCategories,
   saveCloudRecurring,
   saveCloudWallet,
   updateCloudTransaction,
@@ -20,6 +21,7 @@ import {
 } from '../data/supabaseRepository'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { AppState } from '../types'
+import { createDefaultCategories } from '../i18n/regions'
 import { AppStoreContext, type AppStoreValue } from './AppStoreContext'
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
@@ -126,8 +128,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           async () => {
             if (!session) throw new Error('Sesi telah berakhir.')
             await saveCloudProfile(session.user.id, profile)
+            await syncCloudDefaultCategories(profile.countryCode)
           },
-          () => setState((current) => ({ ...current, profile })),
+          () => setState((current) => ({
+            ...current,
+            profile,
+            categories: [
+              ...createDefaultCategories(profile.countryCode),
+              ...current.categories.filter((category) => !category.isDefault),
+            ],
+          })),
         )
       },
       createTransaction: async (input) => {
