@@ -155,8 +155,8 @@ export function PlanPage() {
   }
 
   return (
-    <div className="standard-page page-width plan-page">
-      <header className="page-header"><div><p>{t('plan.eyebrow')}</p><h1>{t('plan.title')}</h1></div></header>
+    <div className="reference-page plan-page">
+      <header className="reference-topbar"><div><h1>{t('nav.budgets')}</h1><p>{t('plan.eyebrow')}</p></div></header>
 
       <section className="plan-overview">
         <div><span>{t('plan.forecast')}</span><strong className={lowest < 0 ? 'danger-text' : ''}>{lowest < 0 ? t('home.risky') : t('plan.tracked')}</strong><small>{t('plan.lowest', { amount: money(lowest) })}</small></div>

@@ -30,10 +30,7 @@ export function detectLocalePreferences(): LocalePreferences {
   } catch {
     // Use browser detection below.
   }
-  const isIndonesian = navigator.language.toLowerCase().startsWith('id')
-  return isIndonesian
-    ? { language: 'id-ID', locale: 'id-ID', countryCode: 'ID', currency: 'IDR' }
-    : { language: 'en-US', locale: 'en-US', countryCode: 'GLOBAL', currency: 'USD' }
+  return { language: 'en-US', locale: 'en-US', countryCode: 'GLOBAL', currency: 'USD' }
 }
 
 interface LocalizationValue extends LocalePreferences {

@@ -1,26 +1,21 @@
 import {
-  Archive,
   ChevronRight,
   Download,
   Globe2,
   LockKeyhole,
   MessageSquareText,
   Moon,
-  Plus,
   RotateCcw,
   ShieldCheck,
   Tags,
   UserRound,
-  WalletCards,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createId } from '../lib/id'
 import { formatCurrency, formatDate, formatNumber, parseAmount } from '../lib/format'
-import { walletBalances } from '../domain/ledger'
 import { useAppStore } from '../store/useAppStore'
 import { Modal } from '../components/Modal'
-import { EmptyState } from '../components/EmptyState'
 import { AuthPanel } from '../components/AuthPanel'
 import type { Wallet, WalletType } from '../types'
 import type { CountryCode, SupportedLocale } from '../types'
@@ -34,7 +29,6 @@ export function MorePage() {
   const [profileForm, setProfileForm] = useState(false)
   const [localizationForm, setLocalizationForm] = useState(false)
   const [editingWallet, setEditingWallet] = useState<Wallet | undefined>()
-  const balances = walletBalances(state.wallets, state.transactions)
 
   async function submitWallet(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -108,37 +102,19 @@ export function MorePage() {
     URL.revokeObjectURL(url)
   }
 
-  async function archiveWallet(wallet: Wallet) {
-    try {
-      await saveWallet({ ...wallet, isArchived: !wallet.isArchived })
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : t('sync.failed'))
-    }
-  }
-
   return (
     <div className="standard-page page-width more-page">
       <header className="page-header"><div><p>{t('settings.eyebrow')}</p><h1>{t('settings.title')}</h1></div></header>
 
-      <section className="settings-section">
-        <div className="section-title-row"><div><h2>{t('settings.wallets')}</h2><p>{t('settings.walletsBody')}</p></div><button type="button" onClick={() => setWalletForm(true)}><Plus size={16} /> {t('common.add')}</button></div>
-        {state.wallets.length === 0 ? (
-          <EmptyState icon={WalletCards} title={t('settings.noWallet')} body={t('settings.noWalletBody')} action={t('settings.addWallet')} onAction={() => setWalletForm(true)} />
-        ) : (
-          <div className="wallet-list">
-            {state.wallets.map((wallet) => (
-              <article key={wallet.id} className={wallet.isArchived ? 'archived' : ''}>
-                <button type="button" className="wallet-main" onClick={() => { setEditingWallet(wallet); setWalletForm(true) }}>
-                  <i style={{ background: wallet.color }}><WalletCards size={19} /></i>
-                  <span><strong>{wallet.name}</strong><small>{t(`wallet.${wallet.type}` as Parameters<typeof t>[0])}{wallet.isArchived ? ` · ${t('settings.archived')}` : ''}</small></span>
-                  <b>{formatCurrency(balances[wallet.id] ?? wallet.startingBalance, wallet.currency, locale)}</b>
-                  <ChevronRight size={17} />
-                </button>
-                <button className="archive-button" type="button" onClick={() => archiveWallet(wallet)} aria-label={wallet.isArchived ? t('settings.activateWallet') : t('settings.archiveWallet')}><Archive size={16} /></button>
-              </article>
-            ))}
-          </div>
-        )}
+      <section className="settings-section settings-profile-card">
+        <div className="settings-profile-avatar"><img className="brand-icon" src="/pocketgo-icon.png" alt="" /></div>
+        <div>
+          <h2>{state.profile.fullName || 'PocketGo User'}</h2>
+          <p>{language === 'id-ID' ? 'Pengaturan akun dan preferensi aplikasi.' : 'Manage your account and app preferences.'}</p>
+        </div>
+        <button className="circle-button" type="button" onClick={() => setProfileForm(true)} aria-label={t('common.edit')}>
+          <ChevronRight size={18} />
+        </button>
       </section>
 
       <section className="settings-section">

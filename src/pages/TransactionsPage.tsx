@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Search, SlidersHorizontal, Trash2, WalletCards } from 'lucide-react'
+import { ArrowDown, ArrowLeftRight, ArrowUp, Search, Trash2, WalletCards } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
 import { EmptyState } from '../components/EmptyState'
@@ -69,22 +69,22 @@ export function TransactionsPage() {
   }
 
   return (
-    <div className="standard-page page-width">
-      <header className="page-header">
-        <div><p>{t('transactions.history')}</p><h1>{t('transactions.title')}</h1></div>
-        <button className="primary-button small" type="button" onClick={() => setChoosing(true)}>{t('common.add')}</button>
+    <div className="reference-page transactions-reference">
+      <header className="reference-topbar">
+        <div><h1>{t('transactions.title')}</h1><p>{t('transactions.history')}</p></div>
+        <button className="circle-button" type="button" onClick={() => setChoosing(true)} aria-label={t('common.add')}>+</button>
       </header>
       <div className="toolbar">
         <label className="search-field"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('transactions.search')} /></label>
-        <div className="filter-row">
-          <SlidersHorizontal size={17} />
-          <select value={type} onChange={(event) => setType(event.target.value)} aria-label={t('transactions.filterType')}>
-            <option value="all">{t('transactions.allTypes')}</option>
-            <option value="expense">{t('transactions.expense')}</option>
-            <option value="income">{t('transactions.income')}</option>
-            <option value="transfer">{t('transactions.transfer')}</option>
-            <option value="adjustment">{t('transactions.adjustment')}</option>
-          </select>
+        <div className="reference-chip-row" aria-label={t('transactions.filterType')}>
+          {[
+            ['all', t('transactions.allTypes')],
+            ['income', t('transactions.income')],
+            ['expense', t('transactions.expense')],
+            ['transfer', t('transactions.transfer')],
+          ].map(([value, label]) => (
+            <button key={value} className={type === value ? 'active' : ''} type="button" onClick={() => setType(value)}>{label}</button>
+          ))}
           <select value={walletId} onChange={(event) => setWalletId(event.target.value)} aria-label={t('transactions.filterWallet')}>
             <option value="all">{t('transactions.allWallets')}</option>
             {state.wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
@@ -101,7 +101,7 @@ export function TransactionsPage() {
           {Object.entries(groups).map(([date, transactions]) => (
             <section key={date}>
               <h2>{dateLabel(date, locale, t('common.today'), t('common.yesterday'))}</h2>
-              <div className="transaction-list">
+              <div className="reference-list transaction-reference-list">
                 {transactions?.map((transaction) => {
                   const isTransfer = Boolean(transaction.transferGroupId)
                   const rawCategory = state.categories.find((item) => item.id === transaction.categoryId)
@@ -110,11 +110,11 @@ export function TransactionsPage() {
                   const destinationWallet = state.wallets.find((wallet) => wallet.id === transaction.relatedWalletId)?.name
                   const isIncome = transaction.type === 'income'
                   const isAdjustment = transaction.type === 'adjustment'
-                  const Icon = isTransfer ? ArrowLeftRight : isIncome ? ArrowDownLeft : ArrowUpRight
+                  const Icon = isTransfer ? ArrowLeftRight : isIncome ? ArrowUp : ArrowDown
                   return (
-                    <article key={transaction.id} className="transaction-row">
-                      <button className="transaction-main" type="button" onClick={() => setEditing(transaction)}>
-                        <span className={`transaction-icon ${isTransfer ? 'transfer' : isIncome ? 'income' : 'expense'}`}><Icon size={19} /></span>
+                    <article key={transaction.id}>
+                      <button type="button" onClick={() => setEditing(transaction)}>
+                        <span className={`reference-icon ${isTransfer ? 'transfer' : isIncome ? 'income' : 'expense'}`}><Icon size={19} /></span>
                         <span><strong>{isTransfer ? `${sourceWallet} → ${destinationWallet}` : transaction.merchant || category || t('transactions.balanceAdjustment')}</strong><small>{isTransfer ? t('transactions.internalTransfer') : `${category || t('common.system')} · ${sourceWallet ?? t('common.wallet')}`}</small></span>
                         <b className={isIncome || (isAdjustment && transaction.adjustmentDirection !== 'decrease') ? 'positive' : isTransfer ? '' : 'negative'}>
                           {isIncome || (isAdjustment && transaction.adjustmentDirection !== 'decrease') ? '+' : isTransfer ? '' : '-'}{money(transaction.amount)}

@@ -1,7 +1,8 @@
-import { emptyState } from './defaults'
+import { createDemoState, emptyState } from './defaults'
 import type { AppState } from '../types'
 
 const STORAGE_KEY = 'pocketgo-state-v1'
+const DEMO_STORAGE_KEY = 'pocketgo-demo-state-v1'
 
 export function loadState(): AppState {
   try {
@@ -25,4 +26,28 @@ export function saveState(state: AppState) {
 
 export function clearState() {
   localStorage.removeItem(STORAGE_KEY)
+}
+
+export function loadDemoState(): AppState {
+  try {
+    const value = sessionStorage.getItem(DEMO_STORAGE_KEY)
+    if (!value) return createDemoState()
+    const parsed = JSON.parse(value) as Partial<AppState>
+    return {
+      ...createDemoState(),
+      ...parsed,
+      profile: { ...createDemoState().profile, ...parsed.profile },
+      categories: parsed.categories?.length ? parsed.categories : createDemoState().categories,
+    }
+  } catch {
+    return createDemoState()
+  }
+}
+
+export function saveDemoState(state: AppState) {
+  sessionStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state))
+}
+
+export function clearDemoState() {
+  sessionStorage.removeItem(DEMO_STORAGE_KEY)
 }

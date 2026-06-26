@@ -1,16 +1,18 @@
 import {
-  BarChart3,
+  ArrowDown,
+  ArrowLeftRight,
+  ArrowUp,
   Home,
-  ListChecks,
   MoreHorizontal,
+  PieChart,
   Plus,
   ReceiptText,
+  WalletCards,
 } from 'lucide-react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { TransactionSheet } from './TransactionSheet'
 import type { EntryMode } from './TransactionSheet'
-import { TransactionTypeChooser } from './TransactionTypeChooser'
 import { useAppStore } from '../store/useAppStore'
 import { useLocalization } from '../i18n'
 
@@ -18,16 +20,26 @@ export function AppShell() {
   const [choosing, setChoosing] = useState(false)
   const [entryMode, setEntryMode] = useState<EntryMode | null>(null)
   const location = useLocation()
+  const navigate = useNavigate()
   const isOnboarding = location.pathname === '/onboarding'
-  const { syncing, syncError, isCloudMode } = useAppStore()
+  const showGlobalFab = location.pathname === '/transactions' || location.pathname === '/budgets'
+  const { syncing, syncError, isCloudMode, isDemoMode, exitDemo } = useAppStore()
   const { t } = useLocalization()
   const nav = [
     { to: '/', label: t('nav.home'), icon: Home },
+    { to: '/accounts', label: t('nav.accounts'), icon: WalletCards },
     { to: '/transactions', label: t('nav.transactions'), icon: ReceiptText },
-    { to: '/plan', label: t('nav.plan'), icon: ListChecks },
-    { to: '/insight', label: t('nav.insights'), icon: BarChart3 },
+    { to: '/budgets', label: t('nav.budgets'), icon: PieChart },
     { to: '/more', label: t('nav.more'), icon: MoreHorizontal },
   ]
+  const exitDemoToLogin = () => {
+    exitDemo()
+    navigate('/?auth=login', { replace: true })
+  }
+  const exitDemoToSignup = () => {
+    exitDemo()
+    navigate('/?auth=signup', { replace: true })
+  }
 
   if (isOnboarding) return <Outlet />
 
@@ -52,6 +64,13 @@ export function AppShell() {
       <main className="app-content">
         {isCloudMode && syncing ? <div className="sync-banner" role="status">{t('sync.syncing')}</div> : null}
         {isCloudMode && syncError ? <div className="sync-banner error" role="alert">{syncError}</div> : null}
+        {isDemoMode ? (
+          <div className="demo-banner" role="status">
+            <span><strong>{t('demo.bannerTitle')}</strong>{t('demo.bannerBody')}</span>
+            <button type="button" onClick={exitDemoToSignup}>{t('demo.createAccount')}</button>
+            <button type="button" onClick={exitDemoToLogin}>{t('demo.exit')}</button>
+          </div>
+        ) : null}
         <Outlet />
       </main>
       <nav className="bottom-nav" aria-label={t('nav.main')}>
@@ -61,17 +80,19 @@ export function AppShell() {
           </NavLink>
         ))}
       </nav>
-      <button className="global-fab" type="button" aria-label={t('home.addTransaction')} onClick={() => setChoosing(true)}>
-        <Plus size={25} />
-      </button>
-      <TransactionTypeChooser
-        open={choosing}
-        onClose={() => setChoosing(false)}
-        onSelect={(mode) => {
-          setChoosing(false)
-          setEntryMode(mode)
-        }}
-      />
+      {showGlobalFab ? (
+        <button className={`global-fab ${choosing ? 'open' : ''}`} type="button" aria-label={t('home.addTransaction')} onClick={() => setChoosing((current) => !current)}>
+          <Plus size={25} />
+        </button>
+      ) : null}
+      {showGlobalFab && choosing ? (
+        <div className="quick-action-menu" role="menu" aria-label={t('home.addTransaction')}>
+          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('income') }}><span className="transaction-type-icon income"><ArrowUp size={20} /></span>{t('quick.income')}</button>
+          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('expense') }}><span className="transaction-type-icon expense"><ArrowDown size={20} /></span>{t('quick.expense')}</button>
+          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('transfer') }}><span className="transaction-type-icon transfer"><ArrowLeftRight size={20} /></span>{t('quick.transfer')}</button>
+          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('adjustment') }}><span className="transaction-type-icon adjustment"><ReceiptText size={20} /></span>{t('quick.adjustment')}</button>
+        </div>
+      ) : null}
       <TransactionSheet
         key={entryMode ?? 'closed'}
         open={Boolean(entryMode)}

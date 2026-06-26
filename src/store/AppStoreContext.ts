@@ -20,7 +20,11 @@ export interface AppStoreValue {
   syncError: string
   isCloudMode: boolean
   passwordRecovery: boolean
+  isDemoMode: boolean
   reload: () => Promise<void>
+  startDemo: () => void
+  exitDemo: () => void
+  resetDemo: () => void
   updatePassword: (password: string) => Promise<void>
   saveProfile: (profile: AppState['profile']) => Promise<void>
   createTransaction: (input: TransactionInput) => Promise<void>

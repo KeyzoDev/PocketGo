@@ -144,10 +144,10 @@ async function ensureProfile(user: User) {
     .upsert({
       id: user.id,
       full_name: user.user_metadata.full_name ?? '',
-      preferred_language: user.user_metadata.preferred_language ?? 'id-ID',
-      locale: user.user_metadata.locale ?? 'id-ID',
-      country_code: user.user_metadata.country_code ?? 'ID',
-      currency: user.user_metadata.currency ?? 'IDR',
+      preferred_language: user.user_metadata.preferred_language ?? 'en-US',
+      locale: user.user_metadata.locale ?? 'en-US',
+      country_code: user.user_metadata.country_code ?? 'GLOBAL',
+      currency: user.user_metadata.currency ?? 'USD',
       income_pattern: 'monthly',
       onboarding_completed: false,
     })

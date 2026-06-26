@@ -9,6 +9,8 @@ const TransactionsPage = lazy(() => import('./pages/TransactionsPage').then((mod
 const PlanPage = lazy(() => import('./pages/PlanPage').then((module) => ({ default: module.PlanPage })))
 const InsightPage = lazy(() => import('./pages/InsightPage').then((module) => ({ default: module.InsightPage })))
 const MorePage = lazy(() => import('./pages/MorePage').then((module) => ({ default: module.MorePage })))
+const AccountsPage = lazy(() => import('./pages/AccountsPage').then((module) => ({ default: module.AccountsPage })))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((module) => ({ default: module.NotificationsPage })))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((module) => ({ default: module.OnboardingPage })))
 const AuthPage = lazy(() => import('./pages/AuthPage').then((module) => ({ default: module.AuthPage })))
 const PasswordRecoveryPage = lazy(() => import('./pages/PasswordRecoveryPage').then((module) => ({ default: module.PasswordRecoveryPage })))
@@ -17,7 +19,7 @@ const TermsPage = lazy(() => import('./pages/TermsPage').then((module) => ({ def
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then((module) => ({ default: module.FeedbackPage })))
 
 export function App() {
-  const { state, session, authLoading, dataLoading, isCloudMode, passwordRecovery, syncError, reload } = useAppStore()
+  const { state, session, authLoading, dataLoading, isCloudMode, isDemoMode, passwordRecovery, syncError, reload } = useAppStore()
   const { t, setPreferences, language, countryCode, currency } = useLocalization()
   const location = useLocation()
   const isPublicLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
@@ -45,7 +47,7 @@ export function App() {
       </Suspense>
     )
   }
-  if (authLoading || (isCloudMode && session && dataLoading)) {
+  if ((authLoading && !isDemoMode) || (isCloudMode && session && dataLoading)) {
     return <div className="page-loading" role="status">{t('common.loading')}</div>
   }
   if (passwordRecovery) {
@@ -55,7 +57,7 @@ export function App() {
       </Suspense>
     )
   }
-  if (isCloudMode && !session) {
+  if (isCloudMode && !session && !isDemoMode) {
     return (
       <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
         <AuthPage />
@@ -86,6 +88,9 @@ export function App() {
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route index element={<HomePage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/budgets" element={<PlanPage />} />
           <Route path="/plan" element={<PlanPage />} />
           <Route path="/insight" element={<InsightPage />} />
           <Route path="/more" element={<MorePage />} />

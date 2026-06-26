@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { addTransaction, addTransfer, deleteTransaction, updateTransaction, updateTransfer } from '../domain/ledger'
-import { clearState, loadState, saveState } from '../data/storage'
+import { clearDemoState, clearState, loadDemoState, loadState, saveDemoState, saveState } from '../data/storage'
 import { emptyState } from '../data/defaults'
 import {
   createCloudTransaction,
@@ -25,11 +25,15 @@ import { createDefaultCategories } from '../i18n/regions'
 import { AppStoreContext, type AppStoreValue } from './AppStoreContext'
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
+  const [isDemoMode, setIsDemoMode] = useState(() => sessionStorage.getItem('pocketgo-demo-active') === 'true')
   const [state, setState] = useState<AppState>(() =>
-    isSupabaseConfigured ? emptyState : loadState(),
+    sessionStorage.getItem('pocketgo-demo-active') === 'true'
+      ? loadDemoState()
+      : isSupabaseConfigured ? emptyState : loadState(),
   )
   const [session, setSession] = useState<Session | null>(null)
   const sessionRef = useRef<Session | null>(null)
+  const isDemoModeRef = useRef(isDemoMode)
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
   const [dataLoading, setDataLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -38,6 +42,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) return
+    if (isDemoModeRef.current) {
+      setState(loadDemoState())
+      return
+    }
     const user = sessionRef.current?.user
     if (!user) {
       setState(emptyState)
@@ -53,6 +61,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    isDemoModeRef.current = isDemoMode
+  }, [isDemoMode])
+
+  useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return
     let active = true
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
@@ -60,12 +72,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       sessionRef.current = nextSession
       setSession(nextSession)
       setAuthLoading(false)
+      if (nextSession && isDemoModeRef.current) {
+        sessionStorage.removeItem('pocketgo-demo-active')
+        setIsDemoMode(false)
+      }
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       if (nextSession && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
         setDataLoading(true)
         queueMicrotask(() => reload().catch((error) => setSyncError(error.message)))
       } else {
-        if (!nextSession) {
+        if (!nextSession && !isDemoModeRef.current) {
           setState(emptyState)
           setSyncError('')
           setPasswordRecovery(false)
@@ -79,14 +95,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [reload])
 
   useEffect(() => {
-    if (!isSupabaseConfigured) saveState(state)
-  }, [state])
+    if (isDemoMode) saveDemoState(state)
+    else if (!isSupabaseConfigured) saveState(state)
+  }, [isDemoMode, state])
 
   const mutate = useCallback(async (cloudAction: () => Promise<void>, localAction: () => void) => {
     setSyncing(true)
     setSyncError('')
     try {
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && !isDemoModeRef.current) {
         await cloudAction()
         await reload()
       } else {
@@ -111,7 +128,37 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       syncError,
       isCloudMode: isSupabaseConfigured,
       passwordRecovery,
+      isDemoMode,
       reload,
+      startDemo: () => {
+        sessionStorage.setItem('pocketgo-demo-active', 'true')
+        const demoState = loadDemoState()
+        setIsDemoMode(true)
+        setState(demoState)
+        setSession(null)
+        sessionRef.current = null
+        setAuthLoading(false)
+        setSyncError('')
+        setPasswordRecovery(false)
+      },
+      exitDemo: () => {
+        sessionStorage.removeItem('pocketgo-demo-active')
+        clearDemoState()
+        setIsDemoMode(false)
+        setAuthLoading(false)
+        setState(isSupabaseConfigured ? emptyState : loadState())
+        setSyncError('')
+        setPasswordRecovery(false)
+      },
+      resetDemo: () => {
+        clearDemoState()
+        const demoState = loadDemoState()
+        sessionStorage.setItem('pocketgo-demo-active', 'true')
+        setIsDemoMode(true)
+        setState(demoState)
+        setAuthLoading(false)
+        setSyncError('')
+      },
       updatePassword: async (password) => {
         if (!supabase) throw new Error('Supabase belum dikonfigurasi.')
         setSyncing(true)
@@ -255,12 +302,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         )
       },
       reset: async () => {
+        if (isDemoModeRef.current) {
+          clearDemoState()
+          setState(loadDemoState())
+          return
+        }
         if (isSupabaseConfigured) throw new Error('Reset akun cloud belum tersedia. Hapus data per item.')
         clearState()
         setState(loadState())
       },
     }),
-    [authLoading, dataLoading, mutate, passwordRecovery, reload, session, state, syncError, syncing],
+    [authLoading, dataLoading, isDemoMode, mutate, passwordRecovery, reload, session, state, syncError, syncing],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
