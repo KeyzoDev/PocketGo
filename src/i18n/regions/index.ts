@@ -15,7 +15,7 @@ const indonesia: RegionConfig = {
   defaultCurrency: 'IDR',
   walletExamples: ['Cash', 'BCA', 'Mandiri', 'BRI', 'BNI', 'SeaBank', 'Jago', 'GoPay', 'OVO', 'DANA', 'ShopeePay', 'Kartu Kredit', 'PayLater', 'Tabungan', 'Investasi', 'Usaha'],
   expenseCategories: [
-    ['food_drinks', 'Makan & Minum'], ['groceries', 'Belanja Dapur'], ['transport', 'Transport'],
+    ['food_drinks', 'Makan & Minum'], ['groceries', 'Belanja Dapur'], ['transport', 'Transportasi'],
     ['fuel', 'Bensin'], ['bills', 'Tagihan'], ['housing', 'Kontrakan / KPR'], ['utilities', 'Listrik'],
     ['internet', 'Internet'], ['phone', 'Pulsa / Data'], ['family', 'Keluarga'], ['health', 'Kesehatan'],
     ['debt_payment', 'Cicilan'], ['credit_card', 'Kartu Kredit'], ['bnpl', 'PayLater'],

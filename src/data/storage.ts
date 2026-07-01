@@ -14,6 +14,7 @@ export function loadState(): AppState {
       ...parsed,
       profile: { ...emptyState.profile, ...parsed.profile },
       categories: parsed.categories?.length ? parsed.categories : emptyState.categories,
+      categoryRules: parsed.categoryRules ?? emptyState.categoryRules,
     }
   } catch {
     return emptyState
@@ -38,6 +39,7 @@ export function loadDemoState(): AppState {
       ...parsed,
       profile: { ...createDemoState().profile, ...parsed.profile },
       categories: parsed.categories?.length ? parsed.categories : createDemoState().categories,
+      categoryRules: parsed.categoryRules ?? createDemoState().categoryRules,
     }
   } catch {
     return createDemoState()

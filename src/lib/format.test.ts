@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCurrency, formatDate, formatNumber, parseAmount } from './format'
+import { formatCurrency, formatDate, formatMoney, formatNumber, parseAmount } from './format'
 
 describe('locale formatting', () => {
   it('formats IDR using Indonesian separators', () => {
@@ -8,6 +8,20 @@ describe('locale formatting', () => {
 
   it('formats USD using English separators and decimals', () => {
     expect(formatCurrency(12_450, 'USD', 'en-US')).toBe('$12,450.00')
+  })
+
+  it('formats USD with plain dollar symbol in Indonesian locale', () => {
+    expect(formatCurrency(12_450.75, 'USD', 'id-ID')).toBe('$12.450,75')
+    expect(formatCurrency(0, 'USD', 'id-ID')).toBe('$0,00')
+  })
+
+  it('formats IDR without decimals using locale-specific labels', () => {
+    expect(formatCurrency(12_450_750, 'IDR', 'id-ID')).toBe('Rp 12.450.750')
+    expect(formatCurrency(12_450_750, 'IDR', 'en-US')).toBe('IDR 12,450,750')
+  })
+
+  it('formats invalid money values as zero instead of NaN', () => {
+    expect(formatMoney(Number.NaN, 'USD', 'en-US')).toBe('$0.00')
   })
 
   it('formats dates and numbers using the selected locale', () => {

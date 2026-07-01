@@ -2,26 +2,31 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Session } from '@supabase/supabase-js'
 import { addTransaction, addTransfer, deleteTransaction, updateTransaction, updateTransfer } from '../domain/ledger'
 import { clearDemoState, clearState, loadDemoState, loadState, saveDemoState, saveState } from '../data/storage'
-import { emptyState } from '../data/defaults'
+import { createDemoState, emptyState } from '../data/defaults'
 import {
   createCloudTransaction,
   createCloudTransfer,
   deleteCloudRecord,
   deleteCloudTransaction,
   loadCloudState,
+  saveCloudCurrencyConversion,
   saveCloudBudget,
   saveCloudDebt,
   saveCloudGoal,
   saveCloudProfile,
+  saveCloudCategoryRule,
   syncCloudDefaultCategories,
   saveCloudRecurring,
   saveCloudWallet,
+  uploadCloudImportedDocument,
+  processCloudImportedDocument,
   updateCloudTransaction,
   updateCloudTransfer,
 } from '../data/supabaseRepository'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { AppState } from '../types'
 import { createDefaultCategories } from '../i18n/regions'
+import { convertAppStateCurrency, needsAppStateCurrencyConversion } from '../domain/currencyConversion'
 import { AppStoreContext, type AppStoreValue } from './AppStoreContext'
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
@@ -130,9 +135,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       passwordRecovery,
       isDemoMode,
       reload,
-      startDemo: () => {
+      startDemo: (preferences) => {
+        clearDemoState()
         sessionStorage.setItem('pocketgo-demo-active', 'true')
-        const demoState = loadDemoState()
+        const demoState = createDemoState(preferences)
         setIsDemoMode(true)
         setState(demoState)
         setSession(null)
@@ -152,7 +158,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       },
       resetDemo: () => {
         clearDemoState()
-        const demoState = loadDemoState()
+        const demoState = createDemoState({
+          language: state.profile.preferredLanguage,
+          locale: state.profile.locale,
+          countryCode: state.profile.countryCode,
+          currency: state.profile.currency,
+        })
         sessionStorage.setItem('pocketgo-demo-active', 'true')
         setIsDemoMode(true)
         setState(demoState)
@@ -171,20 +182,55 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
       },
       saveProfile: async (profile) => {
+        const currencyConversionNeeded = needsAppStateCurrencyConversion(state, profile.currency)
+        const countryChanged = profile.countryCode !== state.profile.countryCode
         await mutate(
           async () => {
             if (!session) throw new Error('Sesi telah berakhir.')
-            await saveCloudProfile(session.user.id, profile)
-            await syncCloudDefaultCategories(profile.countryCode)
+            if (currencyConversionNeeded) {
+              await saveCloudCurrencyConversion(session.user.id, convertAppStateCurrency(state, profile))
+            } else {
+              await saveCloudProfile(session.user.id, profile)
+            }
+            if (countryChanged) {
+              await syncCloudDefaultCategories(profile.countryCode)
+            }
           },
-          () => setState((current) => ({
-            ...current,
-            profile,
-            categories: [
-              ...createDefaultCategories(profile.countryCode),
-              ...current.categories.filter((category) => !category.isDefault),
-            ],
-          })),
+          () => setState((current) => {
+            if (isDemoModeRef.current) {
+              const demoLocalizationChanged =
+                profile.preferredLanguage !== current.profile.preferredLanguage ||
+                profile.locale !== current.profile.locale ||
+                profile.countryCode !== current.profile.countryCode ||
+                profile.currency !== current.profile.currency
+
+              if (demoLocalizationChanged) {
+                const localizedDemo = createDemoState({
+                  language: profile.preferredLanguage,
+                  locale: profile.locale,
+                  countryCode: profile.countryCode,
+                  currency: profile.currency,
+                })
+                return {
+                  ...localizedDemo,
+                  profile: {
+                    ...localizedDemo.profile,
+                    ...profile,
+                  },
+                }
+              }
+            }
+            const next = needsAppStateCurrencyConversion(current, profile.currency) ? convertAppStateCurrency(current, profile) : { ...current, profile }
+            return {
+              ...next,
+              categories: countryChanged
+                ? [
+                  ...createDefaultCategories(profile.countryCode),
+                  ...current.categories.filter((category) => !category.isDefault),
+                ]
+                : current.categories,
+            }
+          }),
         )
       },
       createTransaction: async (input) => {
@@ -300,6 +346,45 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           () => deleteCloudRecord('debts', id),
           () => setState((current) => ({ ...current, debts: current.debts.filter((item) => item.id !== id) })),
         )
+      },
+      saveCategoryRule: async (rule) => {
+        if (isSupabaseConfigured && !isDemoModeRef.current) {
+          const saved = await saveCloudCategoryRule(rule)
+          setState((current) => ({
+            ...current,
+            categoryRules: [
+              saved,
+              ...current.categoryRules.filter((item) => item.id !== saved.id),
+            ],
+          }))
+        } else {
+          setState((current) => ({
+            ...current,
+            categoryRules: [
+              rule,
+              ...current.categoryRules.filter((item) => item.id !== rule.id),
+            ],
+          }))
+        }
+      },
+      uploadImportedDocument: async (file, sourceType) => {
+        if (isSupabaseConfigured && !isDemoModeRef.current) return uploadCloudImportedDocument(file, sourceType)
+        const now = new Date().toISOString()
+        return {
+          id: crypto.randomUUID(),
+          fileName: file.name,
+          fileType: file.type || 'unknown',
+          fileSize: file.size,
+          sourceType,
+          uploadStatus: 'local',
+          parseStatus: 'pending',
+          createdAt: now,
+          updatedAt: now,
+        }
+      },
+      processImportedDocument: async (documentId, sourceType) => {
+        if (isSupabaseConfigured && !isDemoModeRef.current) return processCloudImportedDocument(documentId, sourceType)
+        return { drafts: [] }
       },
       reset: async () => {
         if (isDemoModeRef.current) {

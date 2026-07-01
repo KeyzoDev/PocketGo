@@ -41,10 +41,10 @@ export function FeedbackPage() {
         <p className="eyebrow">{t('feedback.eyebrow')}</p>
         <h1>{t('feedback.title')}</h1>
         <p className="legal-lead">{t('feedback.lead')}</p>
-        <form className="form-stack feedback-form" onSubmit={submit}>
+        <form className="form-stack feedback-form" noValidate onSubmit={submit}>
           <label>{t('feedback.type')}<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="confusing">{language === 'id-ID' ? 'Membingungkan' : 'Confusing'}</option><option value="bug">Bug</option><option value="accuracy">{language === 'id-ID' ? 'Akurasi perhitungan' : 'Calculation accuracy'}</option><option value="idea">{language === 'id-ID' ? 'Ide fitur' : 'Feature idea'}</option><option value="other">{language === 'id-ID' ? 'Lainnya' : 'Other'}</option></select></label>
           <label>{t('feedback.rating')}<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="5">5 — {language === 'id-ID' ? 'Sangat membantu' : 'Very helpful'}</option><option value="4">4 — {language === 'id-ID' ? 'Membantu' : 'Helpful'}</option><option value="3">3 — {language === 'id-ID' ? 'Cukup' : 'Okay'}</option><option value="2">2 — {language === 'id-ID' ? 'Kurang membantu' : 'Not very helpful'}</option><option value="1">1 — {language === 'id-ID' ? 'Tidak membantu' : 'Not helpful'}</option></select></label>
-          <label>{t('feedback.message')}<textarea value={message} onChange={(event) => setMessage(event.target.value)} minLength={5} maxLength={2000} rows={7} required placeholder={t('feedback.placeholder')} /></label>
+          <label>{t('feedback.message')}<textarea value={message} onChange={(event) => setMessage(event.target.value)} minLength={5} maxLength={2000} rows={7} placeholder={t('feedback.placeholder')} /></label>
           {status ? <p className={status === t('feedback.success') ? 'inline-message' : 'form-error'} role="status">{status}</p> : null}
           <button className="primary-button" disabled={saving}>{saving ? t('feedback.sending') : t('feedback.send')}</button>
         </form>

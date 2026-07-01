@@ -1,10 +1,26 @@
-export function formatCurrency(value: number, currency = 'IDR', locale = 'id-ID', compact = false) {
+export function formatMoney(value: number, currency = 'IDR', locale = 'id-ID', compact = false) {
+  const safeValue = Number.isFinite(value) ? value : 0
+  const fractionDigits = currency === 'IDR' ? 0 : currency === 'USD' ? 2 : 2
+  const number = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: fractionDigits,
+    notation: compact ? 'compact' : 'standard',
+  }).format(safeValue)
+
+  if (currency === 'USD') return `$${number}`
+  if (currency === 'IDR') return locale.startsWith('id') ? `Rp ${number}` : `IDR ${number}`
+
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    maximumFractionDigits: currency === 'IDR' ? 0 : 2,
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: fractionDigits,
     notation: compact ? 'compact' : 'standard',
-  }).format(value)
+  }).format(safeValue)
+}
+
+export function formatCurrency(value: number, currency = 'IDR', locale = 'id-ID', compact = false) {
+  return formatMoney(value, currency, locale, compact)
 }
 
 export function formatDate(value: string | Date, locale = 'id-ID', options?: Intl.DateTimeFormatOptions) {
@@ -21,6 +37,8 @@ export function formatNumber(value: number, locale = 'id-ID', options?: Intl.Num
 }
 
 export function currencySymbol(currency: string, locale: string) {
+  if (currency === 'USD') return '$'
+  if (currency === 'IDR') return locale.startsWith('id') ? 'Rp' : 'IDR'
   return new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
     .formatToParts(0)
     .find((part) => part.type === 'currency')?.value ?? currency

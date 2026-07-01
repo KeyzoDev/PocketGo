@@ -1,4 +1,5 @@
 import { createId } from '../lib/id'
+import { convertCurrency } from '../lib/currency'
 import type { AppState, Transaction, TransactionInput, TransferInput, Wallet } from '../types'
 
 export function transactionEffect(transaction: Transaction) {
@@ -32,7 +33,18 @@ export function totalBalance(state: AppState) {
   const balances = walletBalances(state.wallets, state.transactions)
   return state.wallets
     .filter((wallet) => !wallet.isArchived && wallet.includeInTotal)
-    .reduce((sum, wallet) => sum + balances[wallet.id], 0)
+    .reduce(
+      (sum, wallet) =>
+        sum + convertCurrency(balances[wallet.id] ?? wallet.startingBalance, wallet.currency, state.profile.currency, state.profile.usdToIdrRate),
+      0,
+    )
+}
+
+export function transactionAmountInBase(state: AppState, transaction: Transaction) {
+  const wallet = state.wallets.find((item) => item.id === transaction.walletId)
+  const sourceCurrency = transaction.currency ?? wallet?.currency ?? state.profile.currency
+  return transaction.amountInBaseCurrency
+    ?? convertCurrency(transaction.amount, sourceCurrency, state.profile.currency, transaction.exchangeRate ?? state.profile.usdToIdrRate)
 }
 
 function validateAmount(amount: number) {
@@ -60,6 +72,9 @@ export function addTransaction(state: AppState, input: TransactionInput): AppSta
     ...input,
     id: createId('txn'),
     amount: Math.abs(input.amount),
+    currency: input.currency,
+    exchangeRate: input.exchangeRate,
+    amountInBaseCurrency: input.amountInBaseCurrency,
     createdAt: new Date().toISOString(),
   }
   return { ...state, transactions: [transaction, ...state.transactions] }

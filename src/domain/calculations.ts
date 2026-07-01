@@ -11,7 +11,7 @@ import {
   setDate,
   startOfDay,
 } from 'date-fns'
-import { analyticsTransactions, totalBalance } from './ledger'
+import { analyticsTransactions, totalBalance, transactionAmountInBase } from './ledger'
 import type { AppState, RecurringRule } from '../types'
 
 function nextIncomeDate(state: AppState, today: Date) {
@@ -158,10 +158,10 @@ export function monthlySummary(state: AppState, date = new Date()) {
   })
   const income = transactions
     .filter((transaction) => transaction.type === 'income')
-    .reduce((sum, transaction) => sum + transaction.amount, 0)
+    .reduce((sum, transaction) => sum + transactionAmountInBase(state, transaction), 0)
   const expense = transactions
     .filter((transaction) => transaction.type === 'expense')
-    .reduce((sum, transaction) => sum + transaction.amount, 0)
+    .reduce((sum, transaction) => sum + transactionAmountInBase(state, transaction), 0)
   return {
     income,
     expense,
@@ -189,6 +189,6 @@ export function detectSmallSpendingLeak(state: AppState) {
     (transaction) => transaction.type === 'expense',
   )
   const small = expenses.filter((transaction) => transaction.amount <= 30000)
-  const total = small.reduce((sum, transaction) => sum + transaction.amount, 0)
+  const total = small.reduce((sum, transaction) => sum + transactionAmountInBase(state, transaction), 0)
   return small.length >= 5 ? { count: small.length, total } : null
 }

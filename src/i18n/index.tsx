@@ -5,7 +5,7 @@ import { idID } from './locales/id-ID'
 import { regions } from './regions'
 import type { CountryCode, SupportedLocale } from '../types'
 
-type TranslationKey = keyof typeof idID
+export type TranslationKey = keyof typeof idID
 
 export interface LocalePreferences {
   language: SupportedLocale
@@ -30,7 +30,7 @@ export function detectLocalePreferences(): LocalePreferences {
   } catch {
     // Use browser detection below.
   }
-  return { language: 'en-US', locale: 'en-US', countryCode: 'GLOBAL', currency: 'USD' }
+  return { language: 'id-ID', locale: 'id-ID', countryCode: 'ID', currency: 'IDR' }
 }
 
 interface LocalizationValue extends LocalePreferences {
@@ -41,11 +41,22 @@ interface LocalizationValue extends LocalePreferences {
 
 const LocalizationContext = createContext<LocalizationValue | null>(null)
 
+export function translateMessage(
+  language: SupportedLocale,
+  key: TranslationKey,
+  variables?: Record<string, string | number>,
+) {
+  const messages = language === 'id-ID' ? idID : enUS
+  return Object.entries(variables ?? {}).reduce(
+    (text, [name, replacement]) => text.replaceAll(`{{${name}}}`, String(replacement)),
+    messages[key] ?? idID[key],
+  )
+}
+
 export function LocalizationProvider({ children }: { children: ReactNode }) {
   const [preferences, setState] = useState<LocalePreferences>(detectLocalePreferences)
 
   const value = useMemo<LocalizationValue>(() => {
-    const messages = preferences.language === 'id-ID' ? idID : enUS
     const setPreferences = (next: LocalePreferences) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       document.documentElement.lang = next.language
@@ -53,15 +64,12 @@ export function LocalizationProvider({ children }: { children: ReactNode }) {
     }
     return {
       ...preferences,
-      t: (key, variables) => Object.entries(variables ?? {}).reduce(
-        (text, [name, replacement]) => text.replaceAll(`{{${name}}}`, String(replacement)),
-        messages[key] ?? idID[key],
-      ),
+      t: (key, variables) => translateMessage(preferences.language, key, variables),
       setPreferences,
       selectLanguage: (language) => {
         const countryCode = language === 'id-ID' ? 'ID' : 'GLOBAL'
         const region = regions[countryCode]
-        setPreferences({ language, locale: region.locale, countryCode, currency: region.defaultCurrency })
+        setPreferences({ language, locale: language, countryCode, currency: region.defaultCurrency })
       },
     }
   }, [preferences])

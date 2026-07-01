@@ -1,15 +1,20 @@
 import type { User } from '@supabase/supabase-js'
 import { emptyState } from './defaults'
 import { createDefaultCategories } from '../i18n/regions'
+import { FALLBACK_USD_TO_IDR_RATE } from '../lib/currency'
 import { supabase } from '../lib/supabase'
 import type {
   AppState,
   Budget,
+  CategoryRule,
   Category,
   Debt,
   Goal,
+  ImportedTransactionDraft,
+  ImportSourceType,
   Profile,
   RecurringRule,
+  ScannedDocument,
   Transaction,
   TransactionInput,
   TransferInput,
@@ -27,6 +32,15 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+function safeFileName(name: string) {
+  return name
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 90) || 'import-file'
+}
+
 function profileFromRow(row?: Row | null): Profile {
   if (!row) return emptyState.profile
   return {
@@ -35,6 +49,9 @@ function profileFromRow(row?: Row | null): Profile {
     locale: row.locale ?? 'id-ID',
     countryCode: row.country_code ?? 'ID',
     currency: row.currency ?? 'IDR',
+    usdToIdrRate: Number(row.usd_to_idr_rate ?? FALLBACK_USD_TO_IDR_RATE),
+    exchangeRateSource: row.exchange_rate_source ?? 'fallback',
+    exchangeRateUpdatedAt: row.exchange_rate_updated_at ?? undefined,
     incomePattern: row.income_pattern ?? 'monthly',
     defaultIncomeDay: row.default_income_day ?? undefined,
     onboardingCompleted: Boolean(row.onboarding_completed),
@@ -66,6 +83,65 @@ function categoryFromRow(row: Row): Category {
   }
 }
 
+function categoryRuleFromRow(row: Row): CategoryRule {
+  return {
+    id: row.id,
+    userId: row.user_id ?? undefined,
+    language: row.language,
+    matchType: row.match_type,
+    pattern: row.pattern,
+    categoryId: row.category_id,
+    categoryName: row.category_name,
+    priority: row.priority,
+    isDefault: row.is_default,
+    createdAt: row.created_at,
+  }
+}
+
+function scannedDocumentFromRow(row: Row): ScannedDocument {
+  return {
+    id: row.id,
+    userId: row.user_id ?? undefined,
+    fileName: row.file_name,
+    filePath: row.file_path,
+    fileType: row.file_type,
+    fileSize: Number(row.file_size),
+    sourceType: row.source_type,
+    uploadStatus: row.upload_status,
+    parseStatus: row.parse_status,
+    rawText: row.raw_text ?? undefined,
+    ocrProvider: row.ocr_provider ?? undefined,
+    ocrConfidence: row.ocr_confidence ? Number(row.ocr_confidence) : undefined,
+    errorMessage: row.error_message ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function importedDraftFromRow(row: Row): ImportedTransactionDraft {
+  return {
+    id: row.id,
+    scannedDocumentId: row.scanned_document_id,
+    userId: row.user_id ?? undefined,
+    type: row.type,
+    amount: row.amount == null ? null : Number(row.amount),
+    currency: row.currency,
+    date: row.date ?? new Date().toISOString().slice(0, 10),
+    merchant: row.merchant ?? undefined,
+    description: row.description ?? undefined,
+    note: row.note ?? undefined,
+    categoryId: row.category_id ?? undefined,
+    categoryName: row.category_name ?? undefined,
+    accountId: row.account_id ?? undefined,
+    confidence: Number(row.confidence ?? 0),
+    duplicateCandidate: Boolean(row.duplicate_candidate),
+    status: row.status,
+    rawText: row.raw_text ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
 function transactionFromRow(row: Row): Transaction {
   return {
     id: row.id,
@@ -73,6 +149,9 @@ function transactionFromRow(row: Row): Transaction {
     categoryId: row.category_id ?? undefined,
     type: row.type,
     amount: Number(row.amount),
+    currency: row.currency ?? undefined,
+    exchangeRate: row.exchange_rate ? Number(row.exchange_rate) : undefined,
+    amountInBaseCurrency: row.amount_in_base_currency ? Number(row.amount_in_base_currency) : undefined,
     adjustmentDirection: row.adjustment_direction ?? undefined,
     transactionDate: row.transaction_date,
     merchant: row.merchant ?? undefined,
@@ -97,10 +176,12 @@ function recurringFromRow(row: Row): RecurringRule {
   }
 }
 
-function budgetFromRow(row: Row): Budget {
+function budgetFromRow(row: Row, budgetItems: Row[] = []): Budget {
+  const item = budgetItems.find((budgetItem) => budgetItem.budget_id === row.id)
   return {
     id: row.id,
     name: row.name,
+    categoryId: item?.category_id ?? undefined,
     totalLimit: Number(row.total_limit),
     periodStart: row.period_start,
     periodEnd: row.period_end,
@@ -111,6 +192,7 @@ function goalFromRow(row: Row): Goal {
   return {
     id: row.id,
     name: row.name,
+    walletId: row.linked_wallet_id ?? undefined,
     targetAmount: Number(row.target_amount),
     currentAmount: Number(row.current_amount),
     targetDate: row.target_date,
@@ -148,6 +230,8 @@ async function ensureProfile(user: User) {
       locale: user.user_metadata.locale ?? 'en-US',
       country_code: user.user_metadata.country_code ?? 'GLOBAL',
       currency: user.user_metadata.currency ?? 'USD',
+      usd_to_idr_rate: FALLBACK_USD_TO_IDR_RATE,
+      exchange_rate_source: 'fallback',
       income_pattern: 'monthly',
       onboarding_completed: false,
     })
@@ -178,18 +262,22 @@ export async function loadCloudState(user: User): Promise<AppState> {
     transactions,
     recurringRules,
     budgets,
+    budgetItems,
     goals,
     debts,
+    categoryRules,
   ] = await Promise.all([
     db.from('wallets').select('*').order('sort_order').order('created_at'),
     db.from('categories').select('*').order('sort_order').order('name'),
     db.from('transactions').select('*').order('transaction_date', { ascending: false }).order('created_at', { ascending: false }),
     db.from('recurring_rules').select('*').order('next_due_date'),
     db.from('budgets').select('*').order('period_start', { ascending: false }),
+    db.from('budget_items').select('*'),
     db.from('goals').select('*').order('created_at'),
     db.from('debts').select('*').order('created_at'),
+    db.from('category_rules').select('*').or(`user_id.eq.${user.id},user_id.is.null`).order('priority', { ascending: false }),
   ])
-  const failed = [wallets, categories, transactions, recurringRules, budgets, goals, debts].find(
+  const failed = [wallets, categories, transactions, recurringRules, budgets, budgetItems, goals, debts, categoryRules].find(
     (result) => result.error,
   )
   if (failed?.error) throw failed.error
@@ -197,9 +285,10 @@ export async function loadCloudState(user: User): Promise<AppState> {
     profile,
     wallets: (wallets.data ?? []).map(walletFromRow),
     categories: dedupeCategories((categories.data ?? []).map(categoryFromRow)),
+    categoryRules: (categoryRules.data ?? []).map(categoryRuleFromRow),
     transactions: (transactions.data ?? []).map(transactionFromRow),
     recurringRules: (recurringRules.data ?? []).map(recurringFromRow),
-    budgets: (budgets.data ?? []).map(budgetFromRow),
+    budgets: (budgets.data ?? []).map((budget) => budgetFromRow(budget, budgetItems.data ?? [])),
     goals: (goals.data ?? []).map(goalFromRow),
     debts: (debts.data ?? []).map(debtFromRow),
   }
@@ -213,11 +302,144 @@ export async function saveCloudProfile(userId: string, profile: Profile) {
     locale: profile.locale,
     country_code: profile.countryCode,
     currency: profile.currency,
+    usd_to_idr_rate: profile.usdToIdrRate,
+    exchange_rate_source: profile.exchangeRateSource,
+    exchange_rate_updated_at: profile.exchangeRateUpdatedAt ?? null,
     income_pattern: profile.incomePattern,
     default_income_day: profile.defaultIncomeDay ?? null,
     onboarding_completed: profile.onboardingCompleted,
   })
   if (error) throw error
+}
+
+export async function uploadCloudImportedDocument(file: File, sourceType: ImportSourceType) {
+  const db = client()
+  const { data: userData, error: userError } = await db.auth.getUser()
+  if (userError || !userData.user) throw new Error('Sesi telah berakhir.')
+  const documentId = crypto.randomUUID()
+  const month = new Date().toISOString().slice(0, 7)
+  const filePath = `${userData.user.id}/${month}/${documentId}-${safeFileName(file.name)}`
+  const { error: uploadError } = await db.storage
+    .from('transaction-imports')
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: false,
+    })
+  if (uploadError) throw uploadError
+  const { data, error } = await db
+    .from('scanned_documents')
+    .insert({
+      id: documentId,
+      user_id: userData.user.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_type: file.type || 'application/octet-stream',
+      file_size: file.size,
+      source_type: sourceType,
+      upload_status: 'uploaded',
+      parse_status: 'pending',
+    })
+    .select()
+    .single()
+  if (error) {
+    await db.storage.from('transaction-imports').remove([filePath])
+    throw error
+  }
+  return scannedDocumentFromRow(data)
+}
+
+export async function processCloudImportedDocument(documentId: string, sourceType: ImportSourceType) {
+  const { data, error } = await client().functions.invoke('process-receipt', {
+    body: { documentId, sourceType },
+  })
+  if (error) {
+    const context = (error as { context?: unknown }).context
+    if (context instanceof Response) {
+      try {
+        const payload = await context.clone().json()
+        const code = typeof payload?.error === 'string' ? payload.error : error.name
+        const message = typeof payload?.message === 'string' ? payload.message : error.message
+        throw new Error(`${code}: ${message}`)
+      } catch (caught) {
+        if (caught instanceof Error && caught.message !== error.message) throw caught
+      }
+    }
+    throw error
+  }
+  if (data?.error) throw new Error(`${data.error}: ${data.message ?? data.error}`)
+  return {
+    document: data.document ? scannedDocumentFromRow(data.document) : undefined,
+    drafts: ((data.drafts ?? []) as Row[]).map(importedDraftFromRow),
+  }
+}
+
+export async function saveCloudCategoryRule(rule: CategoryRule) {
+  const db = client()
+  const { data: userData, error: userError } = await db.auth.getUser()
+  if (userError || !userData.user) throw new Error('Sesi telah berakhir.')
+  const payload = {
+    user_id: userData.user.id,
+    language: rule.language,
+    match_type: rule.matchType,
+    pattern: rule.pattern,
+    category_id: rule.categoryId,
+    category_name: rule.categoryName,
+    priority: rule.priority,
+    is_default: false,
+  }
+  const { data, error } = await db
+    .from('category_rules')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return categoryRuleFromRow(data)
+}
+
+export async function saveCloudCurrencyConversion(userId: string, state: AppState) {
+  const db = client()
+  await saveCloudProfile(userId, state.profile)
+  const updates = [
+    ...state.wallets.filter((wallet) => isUuid(wallet.id)).map((wallet) =>
+      db.from('wallets').update({
+        starting_balance: wallet.startingBalance,
+        currency: wallet.currency,
+      }).eq('id', wallet.id),
+    ),
+    ...state.transactions.filter((transaction) => isUuid(transaction.id)).map((transaction) =>
+      db.from('transactions').update({
+        amount: Math.abs(transaction.amount),
+        currency: transaction.currency ?? state.profile.currency,
+        exchange_rate: transaction.exchangeRate ?? state.profile.usdToIdrRate,
+        amount_in_base_currency: transaction.amountInBaseCurrency ?? null,
+      }).eq('id', transaction.id),
+    ),
+    ...state.recurringRules.filter((rule) => isUuid(rule.id)).map((rule) =>
+      db.from('recurring_rules').update({ amount: rule.amount }).eq('id', rule.id),
+    ),
+    ...state.budgets.filter((budget) => isUuid(budget.id)).flatMap((budget) => [
+      db.from('budgets').update({ total_limit: budget.totalLimit }).eq('id', budget.id),
+      db.from('budget_items').update({ planned_amount: budget.totalLimit }).eq('budget_id', budget.id),
+    ]),
+    ...state.goals.filter((goal) => isUuid(goal.id)).map((goal) =>
+      db.from('goals').update({
+        target_amount: goal.targetAmount,
+        current_amount: goal.currentAmount,
+        monthly_contribution: goal.monthlyContribution,
+      }).eq('id', goal.id),
+    ),
+    ...state.debts.filter((debt) => isUuid(debt.id)).map((debt) =>
+      db.from('debts').update({
+        original_amount: debt.originalAmount,
+        remaining_balance: debt.remainingBalance,
+        installment_amount: debt.installmentAmount,
+        minimum_payment: debt.minimumPayment,
+      }).eq('id', debt.id),
+    ),
+  ]
+  const results = await Promise.all(updates)
+  const failed = results.find((result) => result.error)
+  if (failed?.error) throw failed.error
 }
 
 export async function syncCloudDefaultCategories(countryCode: Profile['countryCode']) {
@@ -270,7 +492,7 @@ export async function saveCloudWallet(wallet: Wallet) {
     color: wallet.color,
   }
   const query = isUuid(wallet.id)
-    ? client().from('wallets').update(payload).eq('id', wallet.id)
+    ? client().from('wallets').upsert({ id: wallet.id, ...payload })
     : client().from('wallets').insert(payload)
   const { error } = await query
   if (error) throw error
@@ -282,6 +504,9 @@ export async function createCloudTransaction(input: TransactionInput) {
     category_id: input.categoryId ?? null,
     type: input.type,
     amount: Math.abs(input.amount),
+    currency: input.currency ?? null,
+    exchange_rate: input.exchangeRate ?? null,
+    amount_in_base_currency: input.amountInBaseCurrency ?? null,
     adjustment_direction: input.adjustmentDirection ?? null,
     transaction_date: input.transactionDate,
     merchant: input.merchant ?? null,
@@ -298,6 +523,9 @@ export async function updateCloudTransaction(id: string, input: TransactionInput
       category_id: input.categoryId ?? null,
       type: input.type,
       amount: Math.abs(input.amount),
+      currency: input.currency ?? null,
+      exchange_rate: input.exchangeRate ?? null,
+      amount_in_base_currency: input.amountInBaseCurrency ?? null,
       adjustment_direction: input.adjustmentDirection ?? null,
       transaction_date: input.transactionDate,
       merchant: input.merchant ?? null,
@@ -356,6 +584,7 @@ export async function saveCloudRecurring(rule: RecurringRule) {
 }
 
 export async function saveCloudBudget(budget: Budget) {
+  const db = client()
   const payload = {
     name: budget.name,
     total_limit: budget.totalLimit,
@@ -364,10 +593,21 @@ export async function saveCloudBudget(budget: Budget) {
     mode: 'simple',
   }
   const query = isUuid(budget.id)
-    ? client().from('budgets').update(payload).eq('id', budget.id)
-    : client().from('budgets').insert(payload)
-  const { error } = await query
+    ? db.from('budgets').upsert({ id: budget.id, ...payload }).select('id').single()
+    : db.from('budgets').insert(payload).select('id').single()
+  const { data, error } = await query
   if (error) throw error
+  const budgetId = data.id
+  const { error: deleteError } = await db.from('budget_items').delete().eq('budget_id', budgetId)
+  if (deleteError) throw deleteError
+  if (budget.categoryId) {
+    const { error: itemError } = await db.from('budget_items').insert({
+      budget_id: budgetId,
+      category_id: budget.categoryId,
+      planned_amount: budget.totalLimit,
+    })
+    if (itemError) throw itemError
+  }
 }
 
 export async function saveCloudGoal(goal: Goal) {
@@ -378,6 +618,7 @@ export async function saveCloudGoal(goal: Goal) {
     current_amount: goal.currentAmount,
     target_date: goal.targetDate,
     monthly_contribution: goal.monthlyContribution,
+    linked_wallet_id: goal.walletId ?? null,
     priority: goal.priority,
     status: 'active',
   }

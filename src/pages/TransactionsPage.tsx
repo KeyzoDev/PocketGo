@@ -1,11 +1,15 @@
-import { ArrowDown, ArrowLeftRight, ArrowUp, Search, Trash2, WalletCards } from 'lucide-react'
+import { Search, Trash2, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
 import { EmptyState } from '../components/EmptyState'
 import { TransactionSheet } from '../components/TransactionSheet'
 import type { EntryMode } from '../components/TransactionSheet'
 import { TransactionTypeChooser } from '../components/TransactionTypeChooser'
+import { ProComingSoonModal } from '../components/ProComingSoonModal'
+import { PremiumIcon } from '../components/PremiumIcon'
+import { transactionAmountInBase } from '../domain/ledger'
 import { formatCurrency, formatDate } from '../lib/format'
+import { categoryPremiumIcon } from '../lib/premiumIconMapping'
 import { useAppStore } from '../store/useAppStore'
 import { useLocalization } from '../i18n'
 import { localizedCategoryName } from '../i18n/regions'
@@ -20,14 +24,15 @@ function dateLabel(value: string, locale: string, today: string, yesterday: stri
 
 export function TransactionsPage() {
   const { state, removeTransaction } = useAppStore()
-  const { t, locale, currency, countryCode } = useLocalization()
-  const money = (value: number) => formatCurrency(value, currency, locale)
+  const { t, locale, currency, language } = useLocalization()
+  const categoryLocale = language === 'id-ID' ? 'ID' : 'GLOBAL'
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
   const [walletId, setWalletId] = useState('all')
   const [editing, setEditing] = useState<Transaction | undefined>()
   const [choosing, setChoosing] = useState(false)
   const [entryMode, setEntryMode] = useState<EntryMode | null>(null)
+  const [proComingSoonOpen, setProComingSoonOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const seenTransfers = new Set<string>()
@@ -39,7 +44,7 @@ export function TransactionsPage() {
           seenTransfers.add(transaction.transferGroupId)
         }
         const rawCategory = state.categories.find((item) => item.id === transaction.categoryId)
-        const category = localizedCategoryName(rawCategory?.localizationKey, rawCategory?.name ?? '', countryCode)
+        const category = localizedCategoryName(rawCategory?.localizationKey, rawCategory?.name ?? '', categoryLocale)
         const haystack = `${transaction.merchant ?? ''} ${transaction.note ?? ''} ${category}`.toLowerCase()
         const normalizedType = transaction.transferGroupId ? 'transfer' : transaction.type
         return (
@@ -48,7 +53,7 @@ export function TransactionsPage() {
           (walletId === 'all' || transaction.walletId === walletId)
         )
       })
-  }, [countryCode, query, state.categories, state.transactions, type, walletId])
+  }, [categoryLocale, query, state.categories, state.transactions, type, walletId])
 
   const groups = filtered.reduce<Record<string, Transaction[]>>((result, transaction) => {
     const group = result[transaction.transactionDate] ?? []
@@ -72,7 +77,10 @@ export function TransactionsPage() {
     <div className="reference-page transactions-reference">
       <header className="reference-topbar">
         <div><h1>{t('transactions.title')}</h1><p>{t('transactions.history')}</p></div>
-        <button className="circle-button" type="button" onClick={() => setChoosing(true)} aria-label={t('common.add')}>+</button>
+        <div className="topbar-actions">
+          <button className="secondary-chip-button transaction-import-button" type="button" onClick={() => setProComingSoonOpen(true)}><Upload size={16} /> {t('import.short')}</button>
+          <button className="circle-button" type="button" onClick={() => setChoosing(true)} aria-label={t('common.add')}>+</button>
+        </div>
       </header>
       <div className="toolbar">
         <label className="search-field"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('transactions.search')} /></label>
@@ -93,9 +101,9 @@ export function TransactionsPage() {
       </div>
 
       {state.transactions.length === 0 ? (
-        <EmptyState icon={WalletCards} title={t('transactions.emptyTitle')} body={t('transactions.emptyBody')} action={t('home.addTransaction')} onAction={() => setChoosing(true)} />
+        <EmptyState nativeIcon="transactions" nativeTone="blue" title={t('transactions.emptyTitle')} body={t('transactions.emptyBody')} action={t('home.addTransaction')} onAction={() => setChoosing(true)} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} title={t('transactions.notFound')} body={t('transactions.notFoundBody')} />
+        <EmptyState nativeIcon="search" nativeTone="gray" title={t('transactions.notFound')} body={t('transactions.notFoundBody')} />
       ) : (
         <div className="transaction-groups">
           {Object.entries(groups).map(([date, transactions]) => (
@@ -105,19 +113,26 @@ export function TransactionsPage() {
                 {transactions?.map((transaction) => {
                   const isTransfer = Boolean(transaction.transferGroupId)
                   const rawCategory = state.categories.find((item) => item.id === transaction.categoryId)
-                  const category = localizedCategoryName(rawCategory?.localizationKey, rawCategory?.name ?? '', countryCode)
+                  const category = localizedCategoryName(rawCategory?.localizationKey, rawCategory?.name ?? '', categoryLocale)
                   const sourceWallet = state.wallets.find((wallet) => wallet.id === transaction.walletId)?.name
                   const destinationWallet = state.wallets.find((wallet) => wallet.id === transaction.relatedWalletId)?.name
                   const isIncome = transaction.type === 'income'
                   const isAdjustment = transaction.type === 'adjustment'
-                  const Icon = isTransfer ? ArrowLeftRight : isIncome ? ArrowUp : ArrowDown
+                  const typeIcon = isTransfer
+                    ? { name: 'transfer', tone: 'blue' as const }
+                    : isIncome
+                      ? categoryPremiumIcon(`${transaction.merchant ?? ''} ${category}`, 'income')
+                      : isAdjustment
+                        ? { name: 'adjustment', tone: 'amber' as const }
+                        : categoryPremiumIcon(`${transaction.merchant ?? ''} ${category}`, 'expense')
+                  const displayAmount = transactionAmountInBase(state, transaction)
                   return (
                     <article key={transaction.id}>
                       <button type="button" onClick={() => setEditing(transaction)}>
-                        <span className={`reference-icon ${isTransfer ? 'transfer' : isIncome ? 'income' : 'expense'}`}><Icon size={19} /></span>
+                        <PremiumIcon name={typeIcon.name} tone={typeIcon.tone} variant="transaction" size="md" />
                         <span><strong>{isTransfer ? `${sourceWallet} → ${destinationWallet}` : transaction.merchant || category || t('transactions.balanceAdjustment')}</strong><small>{isTransfer ? t('transactions.internalTransfer') : `${category || t('common.system')} · ${sourceWallet ?? t('common.wallet')}`}</small></span>
                         <b className={isIncome || (isAdjustment && transaction.adjustmentDirection !== 'decrease') ? 'positive' : isTransfer ? '' : 'negative'}>
-                          {isIncome || (isAdjustment && transaction.adjustmentDirection !== 'decrease') ? '+' : isTransfer ? '' : '-'}{money(transaction.amount)}
+                          {isIncome || (isAdjustment && transaction.adjustmentDirection !== 'decrease') ? '+' : isTransfer ? '' : '-'}{formatCurrency(displayAmount, currency, locale)}
                         </b>
                       </button>
                       <button className="row-delete" type="button" aria-label={t('transactions.delete')} onClick={() => remove(transaction)}><Trash2 size={17} /></button>
@@ -139,6 +154,7 @@ export function TransactionsPage() {
       />
       <TransactionSheet key={entryMode ?? 'closed'} open={Boolean(entryMode)} initialMode={entryMode ?? undefined} onClose={() => setEntryMode(null)} />
       <TransactionSheet key={editing?.id ?? 'none'} open={Boolean(editing)} transaction={editing} onClose={() => setEditing(undefined)} />
+      <ProComingSoonModal open={proComingSoonOpen} feature="import" onClose={() => setProComingSoonOpen(false)} />
     </div>
   )
 }

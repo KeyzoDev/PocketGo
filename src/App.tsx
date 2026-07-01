@@ -1,12 +1,15 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { BrandedLoading } from './components/BrandedLoading'
 import { useAppStore } from './store/useAppStore'
 import { useLocalization } from './i18n'
+import { applyStoredTheme } from './lib/theme'
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage').then((module) => ({ default: module.TransactionsPage })))
 const PlanPage = lazy(() => import('./pages/PlanPage').then((module) => ({ default: module.PlanPage })))
+const GoalsPage = lazy(() => import('./pages/GoalsPage').then((module) => ({ default: module.GoalsPage })))
 const InsightPage = lazy(() => import('./pages/InsightPage').then((module) => ({ default: module.InsightPage })))
 const MorePage = lazy(() => import('./pages/MorePage').then((module) => ({ default: module.MorePage })))
 const AccountsPage = lazy(() => import('./pages/AccountsPage').then((module) => ({ default: module.AccountsPage })))
@@ -23,6 +26,10 @@ export function App() {
   const { t, setPreferences, language, countryCode, currency } = useLocalization()
   const location = useLocation()
   const isPublicLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
+
+  useEffect(() => {
+    applyStoredTheme()
+  }, [])
 
   useEffect(() => {
     if (!session) return
@@ -42,24 +49,24 @@ export function App() {
 
   if (isPublicLegalPage) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
+      <Suspense fallback={<BrandedLoading />}>
         {location.pathname === '/privacy' ? <PrivacyPage /> : <TermsPage />}
       </Suspense>
     )
   }
   if ((authLoading && !isDemoMode) || (isCloudMode && session && dataLoading)) {
-    return <div className="page-loading" role="status">{t('common.loading')}</div>
+    return <BrandedLoading variant={location.pathname === '/auth/callback' ? 'dark' : 'light'} />
   }
   if (passwordRecovery) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
+      <Suspense fallback={<BrandedLoading />}>
         <PasswordRecoveryPage />
       </Suspense>
     )
   }
   if (isCloudMode && !session && !isDemoMode) {
     return (
-      <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
+      <Suspense fallback={<BrandedLoading variant="dark" />}>
         <AuthPage />
       </Suspense>
     )
@@ -81,7 +88,7 @@ export function App() {
   }
 
   return (
-    <Suspense fallback={<div className="page-loading" role="status">{t('common.loading')}</div>}>
+    <Suspense fallback={<BrandedLoading />}>
       <Routes>
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route element={<AppShell />}>
@@ -91,6 +98,7 @@ export function App() {
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/budgets" element={<PlanPage />} />
+          <Route path="/goals" element={<GoalsPage />} />
           <Route path="/plan" element={<PlanPage />} />
           <Route path="/insight" element={<InsightPage />} />
           <Route path="/more" element={<MorePage />} />

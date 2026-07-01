@@ -23,14 +23,14 @@ export function OnboardingPage() {
   function updateLanguage(nextLanguage: SupportedLocale) {
     const nextCountry: CountryCode = nextLanguage === 'id-ID' ? 'ID' : 'GLOBAL'
     const region = regions[nextCountry]
-    setPreferences({ language: nextLanguage, locale: region.locale, countryCode: nextCountry, currency: region.defaultCurrency })
+    setPreferences({ language: nextLanguage, locale: nextLanguage, countryCode: nextCountry, currency: region.defaultCurrency })
   }
 
   function updateRegion(nextCountry: CountryCode) {
     const region = regions[nextCountry]
     setPreferences({
       language: nextCountry === 'ID' ? 'id-ID' : language,
-      locale: region.locale,
+      locale: nextCountry === 'ID' ? 'id-ID' : language,
       countryCode: nextCountry,
       currency: region.defaultCurrency,
     })

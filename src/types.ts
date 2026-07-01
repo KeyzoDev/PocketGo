@@ -27,6 +27,9 @@ export interface Profile {
   locale: SupportedLocale
   countryCode: CountryCode
   currency: string
+  usdToIdrRate: number
+  exchangeRateSource: 'realtime' | 'manual' | 'fallback'
+  exchangeRateUpdatedAt?: string
   incomePattern: 'monthly' | 'twice_monthly' | 'weekly' | 'daily' | 'irregular' | 'none'
   defaultIncomeDay?: number
   onboardingCompleted: boolean
@@ -59,6 +62,9 @@ export interface Transaction {
   categoryId?: string
   type: TransactionType
   amount: number
+  currency?: string
+  exchangeRate?: number
+  amountInBaseCurrency?: number
   adjustmentDirection?: 'increase' | 'decrease'
   transactionDate: string
   merchant?: string
@@ -83,6 +89,7 @@ export interface RecurringRule {
 export interface Budget {
   id: string
   name: string
+  categoryId?: string
   totalLimit: number
   periodStart: string
   periodEnd: string
@@ -91,6 +98,7 @@ export interface Budget {
 export interface Goal {
   id: string
   name: string
+  walletId?: string
   targetAmount: number
   currentAmount: number
   targetDate: string
@@ -111,10 +119,67 @@ export interface Debt {
   status: 'active' | 'paid'
 }
 
+export type ImportSourceType = 'receipt' | 'bank_statement'
+export type ImportedDraftType = 'income' | 'expense' | 'transfer' | 'adjustment' | 'unknown'
+
+export interface ScannedDocument {
+  id: string
+  userId?: string
+  fileName: string
+  filePath?: string
+  fileType: string
+  fileSize: number
+  sourceType: ImportSourceType
+  uploadStatus: 'local' | 'uploaded' | 'failed'
+  parseStatus: 'pending' | 'processing' | 'parsed' | 'failed' | 'unsupported'
+  rawText?: string
+  ocrProvider?: string
+  ocrConfidence?: number
+  errorMessage?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ImportedTransactionDraft {
+  id: string
+  scannedDocumentId: string
+  userId?: string
+  type: ImportedDraftType
+  amount: number | null
+  currency: string
+  date: string
+  merchant?: string
+  description?: string
+  note?: string
+  categoryId?: string
+  categoryName?: string
+  accountId?: string
+  confidence: number
+  duplicateCandidate: boolean
+  status: 'draft' | 'approved' | 'rejected' | 'saved'
+  rawText?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CategoryRule {
+  id: string
+  userId?: string
+  language: SupportedLocale
+  matchType: 'merchant_exact' | 'merchant_contains' | 'keyword_contains' | 'regex'
+  pattern: string
+  categoryId: string
+  categoryName: string
+  priority: number
+  isDefault: boolean
+  createdAt: string
+}
+
 export interface AppState {
   profile: Profile
   wallets: Wallet[]
   categories: Category[]
+  categoryRules: CategoryRule[]
   transactions: Transaction[]
   recurringRules: RecurringRule[]
   budgets: Budget[]

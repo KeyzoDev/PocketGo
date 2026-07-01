@@ -31,9 +31,9 @@ export function PasswordRecoveryPage() {
         <p className="eyebrow">{t('recovery.eyebrow')}</p>
         <h1>{t('recovery.title')}</h1>
         <p className="auth-lead">{t('recovery.lead')}</p>
-        <form className="form-stack" onSubmit={submit}>
-          <label>{t('recovery.password')}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete="new-password" /></label>
-          <label>{t('recovery.confirm')}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required minLength={8} autoComplete="new-password" /></label>
+        <form className="form-stack" noValidate onSubmit={submit}>
+          <label>{t('recovery.password')}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" /></label>
+          <label>{t('recovery.confirm')}<input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} autoComplete="new-password" /></label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button className="primary-button" disabled={syncing}>{syncing ? t('common.saving') : t('recovery.update')}</button>
         </form>

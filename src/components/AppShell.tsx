@@ -1,36 +1,27 @@
-import {
-  ArrowDown,
-  ArrowLeftRight,
-  ArrowUp,
-  Home,
-  MoreHorizontal,
-  PieChart,
-  Plus,
-  ReceiptText,
-  WalletCards,
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { TransactionSheet } from './TransactionSheet'
+import { PremiumIcon, type PremiumIconTone } from './PremiumIcon'
 import type { EntryMode } from './TransactionSheet'
 import { useAppStore } from '../store/useAppStore'
 import { useLocalization } from '../i18n'
 
 export function AppShell() {
-  const [choosing, setChoosing] = useState(false)
-  const [entryMode, setEntryMode] = useState<EntryMode | null>(null)
+  const [entryOpen, setEntryOpen] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode | undefined>(undefined)
   const location = useLocation()
   const navigate = useNavigate()
   const isOnboarding = location.pathname === '/onboarding'
-  const showGlobalFab = location.pathname === '/transactions' || location.pathname === '/budgets'
+  const showGlobalFab = !isOnboarding && location.pathname === '/' && !entryOpen
   const { syncing, syncError, isCloudMode, isDemoMode, exitDemo } = useAppStore()
   const { t } = useLocalization()
-  const nav = [
-    { to: '/', label: t('nav.home'), icon: Home },
-    { to: '/accounts', label: t('nav.accounts'), icon: WalletCards },
-    { to: '/transactions', label: t('nav.transactions'), icon: ReceiptText },
-    { to: '/budgets', label: t('nav.budgets'), icon: PieChart },
-    { to: '/more', label: t('nav.more'), icon: MoreHorizontal },
+  const nav: Array<{ to: string; label: string; premiumName: string; tone: PremiumIconTone }> = [
+    { to: '/', label: t('nav.home'), premiumName: 'home', tone: 'green' },
+    { to: '/transactions', label: t('nav.transactions'), premiumName: 'transactions', tone: 'blue' },
+    { to: '/budgets', label: t('nav.budgets'), premiumName: 'budget', tone: 'amber' },
+    { to: '/goals', label: t('nav.goals'), premiumName: 'goals', tone: 'purple' },
+    { to: '/more', label: t('nav.profile'), premiumName: 'profile', tone: 'teal' },
   ]
   const exitDemoToLogin = () => {
     exitDemo()
@@ -51,13 +42,13 @@ export function AppShell() {
           <div><strong>PocketGo</strong><small>Track Your Money</small></div>
         </div>
         <nav>
-          {nav.map(({ to, label, icon: Icon }) => (
+          {nav.map(({ to, label, premiumName, tone }) => (
             <NavLink key={to} to={to} end={to === '/'}>
-              <Icon size={20} /><span>{label}</span>
+              <PremiumIcon name={premiumName} variant="utility" tone={tone} size="xs" /><span>{label}</span>
             </NavLink>
           ))}
         </nav>
-        <button className="sidebar-add" type="button" onClick={() => setChoosing(true)}>
+        <button className="sidebar-add" type="button" onClick={() => { setEntryMode(undefined); setEntryOpen(true) }}>
           <Plus size={20} /> {t('home.addTransaction')}
         </button>
       </aside>
@@ -74,30 +65,33 @@ export function AppShell() {
         <Outlet />
       </main>
       <nav className="bottom-nav" aria-label={t('nav.main')}>
-        {nav.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === '/'}>
-            <Icon size={21} /><span>{label}</span>
+        {nav.map(({ to, label, premiumName, tone }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            aria-label={label}
+            onClick={() => navigator.vibrate?.(8)}
+          >
+            {({ isActive }) => (
+              <>
+                <PremiumIcon name={premiumName} variant="nav" tone={tone} active={isActive} size="sm" />
+                <span>{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
       {showGlobalFab ? (
-        <button className={`global-fab ${choosing ? 'open' : ''}`} type="button" aria-label={t('home.addTransaction')} onClick={() => setChoosing((current) => !current)}>
+        <button className={`global-fab ${entryOpen ? 'open' : ''}`} type="button" aria-label={t('home.addTransaction')} onClick={() => { setEntryMode(undefined); setEntryOpen(true) }}>
           <Plus size={25} />
         </button>
       ) : null}
-      {showGlobalFab && choosing ? (
-        <div className="quick-action-menu" role="menu" aria-label={t('home.addTransaction')}>
-          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('income') }}><span className="transaction-type-icon income"><ArrowUp size={20} /></span>{t('quick.income')}</button>
-          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('expense') }}><span className="transaction-type-icon expense"><ArrowDown size={20} /></span>{t('quick.expense')}</button>
-          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('transfer') }}><span className="transaction-type-icon transfer"><ArrowLeftRight size={20} /></span>{t('quick.transfer')}</button>
-          <button type="button" role="menuitem" onClick={() => { setChoosing(false); setEntryMode('adjustment') }}><span className="transaction-type-icon adjustment"><ReceiptText size={20} /></span>{t('quick.adjustment')}</button>
-        </div>
-      ) : null}
       <TransactionSheet
-        key={entryMode ?? 'closed'}
-        open={Boolean(entryMode)}
-        initialMode={entryMode ?? undefined}
-        onClose={() => setEntryMode(null)}
+        key={entryOpen ? `open-${entryMode ?? 'chooser'}` : 'closed'}
+        open={entryOpen}
+        initialMode={entryMode}
+        onClose={() => { setEntryOpen(false); setEntryMode(undefined) }}
       />
     </div>
   )
